@@ -31,8 +31,11 @@
  **********************/
 static void lv_obj_del_async_cb(void * obj);
 static void obj_del_core(lv_obj_t * obj);
-static lv_obj_tree_walk_res_t walk_core(lv_obj_t * obj, lv_obj_tree_walk_cb_t cb, lv_coord_t depth, void * user_data);
+static lv_obj_tree_walk_res_t walk_core(lv_obj_t * obj, lv_obj_tree_walk_cbs_t * cbs, lv_coord_t depth,
+                                        void * user_data);
 static lv_obj_tree_walk_res_t lv_obj_dump_tree_cb(lv_obj_t * obj, lv_coord_t depth, void * user_data);
+static lv_obj_tree_walk_res_t lv_obj_dump_tree_children_pre_cb(lv_obj_t * obj, lv_coord_t depth, void * user_data);
+static lv_obj_tree_walk_res_t lv_obj_dump_tree_children_post_cb(lv_obj_t * obj, lv_coord_t depth, void * user_data);
 
 /**********************
  *  STATIC VARIABLES
@@ -350,16 +353,23 @@ uint32_t lv_obj_get_index(const lv_obj_t * obj)
     return 0xFFFFFFFF; /*Shouldn't happen*/
 }
 
-void lv_obj_tree_walk(lv_obj_t * start_obj, lv_obj_tree_walk_cb_t cb, void * user_data)
+void lv_obj_tree_walk(lv_obj_t * start_obj, lv_obj_tree_walk_cbs_t * cbs, void * user_data)
 {
-    lv_coord_t start_depth = start_obj == NULL ? -1 : 0;
+    lv_coord_t start_depth = start_obj == NULL ? 0 : 0;
 
-    walk_core(start_obj, cb, start_depth, user_data);
+    walk_core(start_obj, cbs, start_depth, user_data);
 }
 
 void lv_obj_dump_tree(lv_obj_t * start_obj)
 {
-    lv_obj_tree_walk(start_obj, lv_obj_dump_tree_cb, NULL);
+    lv_obj_tree_walk_cbs_t cbs = {
+        .walking = lv_obj_dump_tree_cb,
+        .walk_child_pre = lv_obj_dump_tree_children_pre_cb,
+        .walk_child_post = lv_obj_dump_tree_children_post_cb,
+    };
+    lv_log("---\n");
+    lv_obj_tree_walk(start_obj, &cbs, NULL);
+    lv_log("...\n");
 }
 
 /**********************
@@ -449,7 +459,8 @@ static void obj_del_core(lv_obj_t * obj)
 }
 
 
-static lv_obj_tree_walk_res_t walk_core(lv_obj_t * obj, lv_obj_tree_walk_cb_t cb, lv_coord_t depth, void * user_data)
+static lv_obj_tree_walk_res_t walk_core(lv_obj_t * obj, lv_obj_tree_walk_cbs_t * cbs, lv_coord_t depth,
+                                        void * user_data)
 {
     lv_obj_tree_walk_res_t res = LV_OBJ_TREE_WALK_NEXT;
 
@@ -457,24 +468,28 @@ static lv_obj_tree_walk_res_t walk_core(lv_obj_t * obj, lv_obj_tree_walk_cb_t cb
         lv_disp_t * disp = lv_disp_get_next(NULL);
         while(disp) {
             uint32_t i;
+            if(cbs->walk_child_pre) cbs->walk_child_pre(obj, depth, disp);
             for(i = 0; i < disp->screen_cnt; i++) {
-                walk_core(disp->screens[i], cb, depth + 1, user_data);
+                walk_core(disp->screens[i], cbs, depth + 1, user_data);
             }
+            if(cbs->walk_child_post) cbs->walk_child_post(obj, depth, disp);
             disp = lv_disp_get_next(disp);
         }
         return LV_OBJ_TREE_WALK_END;    /*The value doesn't matter as it wasn't called recursively*/
     }
 
-    res = cb(obj, depth, user_data);
+    res = cbs->walking(obj, depth, user_data);
 
     if(res == LV_OBJ_TREE_WALK_END) return LV_OBJ_TREE_WALK_END;
 
     if(res != LV_OBJ_TREE_WALK_SKIP_CHILDREN) {
         uint32_t i;
+        if(cbs->walk_child_pre) cbs->walk_child_pre(obj, depth, user_data);
         for(i = 0; i < lv_obj_get_child_cnt(obj); i++) {
-            res = walk_core(lv_obj_get_child(obj, i), cb, depth + 1, user_data);
+            res = walk_core(lv_obj_get_child(obj, i), cbs, depth + 1, user_data);
             if(res == LV_OBJ_TREE_WALK_END) return LV_OBJ_TREE_WALK_END;
         }
+        if(cbs->walk_child_post) cbs->walk_child_post(obj, depth, user_data);
     }
     return LV_OBJ_TREE_WALK_NEXT;
 }
@@ -495,7 +510,7 @@ static lv_obj_tree_walk_res_t lv_obj_dump_tree_cb(lv_obj_t * obj, lv_coord_t dep
     lv_log("- ptr: %p\n", obj);
 
     lv_obj_dump_tree_print_intend(depth + 1, "  ");
-    lv_log("name: %s\n", obj->class_p->class_name);
+    lv_log("type: %s\n", obj->class_p->class_name);
 
     lv_area_t area;
     lv_obj_get_coords(obj, &area);
@@ -555,9 +570,22 @@ static lv_obj_tree_walk_res_t lv_obj_dump_tree_cb(lv_obj_t * obj, lv_coord_t dep
     lv_obj_dump_tree_print_intend(depth + 1, "  ");
     lv_log("offset: [%d, %d]\n", offset.x, offset.y);
 
-    // print children
+    return LV_OBJ_TREE_WALK_NEXT;
+}
+
+static lv_obj_tree_walk_res_t lv_obj_dump_tree_children_pre_cb(lv_obj_t * obj, lv_coord_t depth, void * user_data)
+{
+    if(obj == NULL) {
+        lv_disp_t * disp = (lv_disp_t *)user_data;
+        lv_log("- ptr: %p\n", disp);
+        lv_log("  type: lv_disp\n");
+    }
     lv_obj_dump_tree_print_intend(depth + 1, "  ");
     lv_log("children:\n");
+    return LV_OBJ_TREE_WALK_NEXT;
+}
 
+static lv_obj_tree_walk_res_t lv_obj_dump_tree_children_post_cb(lv_obj_t * obj, lv_coord_t depth, void * user_data)
+{
     return LV_OBJ_TREE_WALK_NEXT;
 }
