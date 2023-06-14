@@ -172,6 +172,31 @@ void lv_obj_tree_walk(struct _lv_obj_t * start_obj, lv_obj_tree_walk_cbs_t * cbs
 
 void lv_obj_dump_tree(struct _lv_obj_t * start_obj);
 
+typedef struct _lv_pack_t {
+    lv_coord_t depth;
+
+    void (*write)(const char * format, ...);
+
+    void (*write_dict)(struct _lv_pack_t * pack, const char * key, const char * value);
+    void (*write_array)(struct _lv_pack_t * pack);
+    void (*write_array_num_inline)(struct _lv_pack_t * pack, uint32_t num_cnt, ...);
+    void (*write_str)(struct _lv_pack_t * pack, const char * str);
+    void (*write_num)(struct _lv_pack_t * pack, int32_t num);
+    void (*write_ptr)(struct _lv_pack_t * pack, const void * ptr);
+    void (*write_bool)(struct _lv_pack_t * pack, bool b);
+    void (*write_null)(struct _lv_pack_t * pack);
+} lv_pack_t;
+
+void lv_pack_write_dict(lv_pack_t * pack, const char * key, const char * value);
+void lv_pack_write_array(lv_pack_t * pack);
+void lv_pack_write_array_num_inline(lv_pack_t * pack, uint32_t num_cnt, ...);
+void lv_pack_write_str(lv_pack_t * pack, const char * str);
+void lv_pack_write_num(lv_pack_t * pack, int32_t num);
+void lv_pack_write_ptr(lv_pack_t * pack, const void * ptr);
+void lv_pack_write_bool(lv_pack_t * pack, bool b);
+void lv_pack_write_null(lv_pack_t * pack);
+
+
 /**********************
  *      MACROS
  **********************/

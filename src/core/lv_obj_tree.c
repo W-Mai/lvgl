@@ -367,8 +367,23 @@ void lv_obj_dump_tree(lv_obj_t * start_obj)
         .walk_child_pre = lv_obj_dump_tree_children_pre_cb,
         .walk_child_post = lv_obj_dump_tree_children_post_cb,
     };
+
+    lv_pack_t pack = {
+        .depth = 0,
+        .write = lv_log,
+
+        .write_dict = lv_pack_write_dict,
+        .write_array = lv_pack_write_array,
+        .write_array_num_inline = lv_pack_write_array_num_inline,
+        .write_str = lv_pack_write_str,
+        .write_num = lv_pack_write_num,
+        .write_ptr = lv_pack_write_ptr,
+        .write_bool = lv_pack_write_bool,
+        .write_null = lv_pack_write_null,
+    };
+
     lv_log("---\n");
-    lv_obj_tree_walk(start_obj, &cbs, NULL);
+    lv_obj_tree_walk(start_obj, &cbs, &pack);
     lv_log("...\n");
 }
 
@@ -502,45 +517,104 @@ static void lv_obj_dump_tree_print_intend(lv_coord_t depth, const char * splitte
     }
 }
 
+void lv_pack_write_dict(lv_pack_t * pack, const char * key, const char * value)
+{
+    lv_obj_dump_tree_print_intend(pack->depth, "  ");
+    lv_pack_write_str(pack, key);
+    lv_pack_write_str(pack, ": ");
+    if(value == NULL)
+        return ;
+    lv_pack_write_str(pack, value);
+    lv_pack_write_str(pack, "\n");
+}
+void lv_pack_write_array(lv_pack_t * pack)
+{
+    lv_obj_dump_tree_print_intend(pack->depth, "  ");
+    pack->write("- \n");
+    pack->depth++;
+}
+void lv_pack_write_array_num_inline(lv_pack_t * pack, uint32_t num_cnt, ...)
+{
+    va_list args;
+    va_start(args, num_cnt);
+    pack->write("[");
+    for(uint32_t i = 0; i < num_cnt; ++i) {
+        int32_t num = va_arg(args, int32_t);
+        pack->write("%d", num);
+        if(i != num_cnt - 1) {
+            pack->write(", ");
+        }
+    }
+    pack->write("]\n");
+    va_end(args);
+}
+void lv_pack_write_str(lv_pack_t * pack, const char * str)
+{
+    pack->write("%s", str);
+}
+void lv_pack_write_num(lv_pack_t * pack, int32_t num)
+{
+    pack->write("%d", num);
+}
+void lv_pack_write_ptr(lv_pack_t * pack, const void * ptr)
+{
+    pack->write("%p", ptr);
+}
+void lv_pack_write_bool(lv_pack_t * pack, bool b)
+{
+    pack->write("%s", b ? "true" : "false");
+}
+void lv_pack_write_null(lv_pack_t * pack)
+{
+    pack->write("null");
+}
+
 static lv_obj_tree_walk_res_t lv_obj_dump_tree_cb(lv_obj_t * obj, lv_coord_t depth, void * user_data)
 {
+    lv_pack_t * pack = (lv_pack_t *)user_data;
+    pack->depth = depth;
+
     lv_coord_t intend = depth;
 
-    lv_obj_dump_tree_print_intend(depth, "  ");
-    lv_log("- ptr: %p\n", obj);
+    pack->write_array(pack);
+    pack->write_dict(pack, "ptr", NULL);
+    pack->write_ptr(pack, obj);
+    pack->write("\n");
 
-    lv_obj_dump_tree_print_intend(depth + 1, "  ");
-    lv_log("type: %s\n", obj->class_p->class_name);
+    pack->write_dict(pack, "type", obj->class_p->class_name);
 
     lv_area_t area;
     lv_obj_get_coords(obj, &area);
-    lv_obj_dump_tree_print_intend(depth + 1, "  ");
-    lv_log("area: [%d, %d, %d, %d]\n", area.x1, area.y1, area.x2, area.y2);
+    pack->write_dict(pack, "area", NULL);
+    pack->write_array_num_inline(pack, 4, area.x1, area.y1, area.x2, area.y2);
 
     lv_coord_t w = lv_obj_get_width(obj);
     lv_coord_t h = lv_obj_get_height(obj);
-    lv_obj_dump_tree_print_intend(depth + 1, "  ");
-    lv_log("size: [%d, %d]\n", w, h);
+    pack->write_dict(pack, "size", NULL);
+    pack->write_array_num_inline(pack, 2, w, h);
 
     lv_color_t bg_color = lv_obj_get_style_bg_color(obj, LV_PART_MAIN);
-    lv_obj_dump_tree_print_intend(depth + 1, "  ");
-    lv_log("bg_color: [%d, %d, %d]\n", bg_color.red, bg_color.green, bg_color.blue);
+    pack->write_dict(pack, "bg_color", NULL);
+    pack->write_array_num_inline(pack, 3, bg_color.red, bg_color.green, bg_color.blue);
 
     lv_opa_t bg_opa = lv_obj_get_style_bg_opa(obj, LV_PART_MAIN);
-    lv_obj_dump_tree_print_intend(depth + 1, "  ");
-    lv_log("bg_opa: %d\n", bg_opa);
+    pack->write_dict(pack, "bg_opa", NULL);
+    pack->write_num(pack, bg_opa);
+    pack->write("\n");
 
     lv_color_t border_color = lv_obj_get_style_border_color(obj, LV_PART_MAIN);
-    lv_obj_dump_tree_print_intend(depth + 1, "  ");
-    lv_log("border_color: [%d, %d, %d]\n", border_color.red, border_color.green, border_color.blue);
+    pack->write_dict(pack, "border_color", NULL);
+    pack->write_array_num_inline(pack, 3, border_color.red, border_color.green, border_color.blue);
 
     lv_coord_t border_width = lv_obj_get_style_border_width(obj, LV_PART_MAIN);
-    lv_obj_dump_tree_print_intend(depth + 1, "  ");
-    lv_log("border_width: %d\n", border_width);
+    pack->write_dict(pack, "border_width", NULL);
+    pack->write_num(pack, border_width);
+    pack->write("\n");
 
     lv_coord_t radius = lv_obj_get_style_radius(obj, LV_PART_MAIN);
-    lv_obj_dump_tree_print_intend(depth + 1, "  ");
-    lv_log("radius: %d\n", radius);
+    pack->write_dict(pack, "radius", NULL);
+    pack->write_num(pack, radius);
+    pack->write("\n");
 
     lv_area_t padding = {
         .x1 = lv_obj_get_style_pad_left(obj, LV_PART_MAIN),
@@ -549,8 +623,8 @@ static lv_obj_tree_walk_res_t lv_obj_dump_tree_cb(lv_obj_t * obj, lv_coord_t dep
         .y2 = lv_obj_get_style_pad_bottom(obj, LV_PART_MAIN),
     };
 
-    lv_obj_dump_tree_print_intend(depth + 1, "  ");
-    lv_log("padding: [%d, %d, %d, %d]\n", padding.x1, padding.y1, padding.x2, padding.y2);
+    pack->write_dict(pack, "padding", NULL);
+    pack->write_array_num_inline(pack, 4, padding.x1, padding.y1, padding.x2, padding.y2);
 
     lv_area_t margin = {
         .x1 = lv_obj_get_style_margin_left(obj, LV_PART_MAIN),
@@ -558,17 +632,16 @@ static lv_obj_tree_walk_res_t lv_obj_dump_tree_cb(lv_obj_t * obj, lv_coord_t dep
         .x2 = lv_obj_get_style_margin_right(obj, LV_PART_MAIN),
         .y2 = lv_obj_get_style_margin_bottom(obj, LV_PART_MAIN),
     };
+    pack->write_dict(pack, "margin", NULL);
+    pack->write_array_num_inline(pack, 4, margin.x1, margin.y1, margin.x2, margin.y2);
 
-    lv_obj_dump_tree_print_intend(depth + 1, "  ");
-    lv_log("margin: [%d, %d, %d, %d]\n", margin.x1, margin.y1, margin.x2, margin.y2);
 
     lv_point_t offset = {
         .x = lv_obj_get_style_translate_x(obj, LV_PART_MAIN),
         .y = lv_obj_get_style_translate_y(obj, LV_PART_MAIN),
     };
-
-    lv_obj_dump_tree_print_intend(depth + 1, "  ");
-    lv_log("offset: [%d, %d]\n", offset.x, offset.y);
+    pack->write_dict(pack, "offset", NULL);
+    pack->write_array_num_inline(pack, 2, offset.x, offset.y);
 
     return LV_OBJ_TREE_WALK_NEXT;
 }
