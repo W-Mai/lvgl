@@ -46,7 +46,7 @@
 /**********************
  *  STATIC PROTOTYPES
  **********************/
-static lv_obj_tree_walk_res_t invalidate_layout_cb(lv_obj_t * obj, void * user_data);
+static lv_obj_tree_walk_res_t invalidate_layout_cb(lv_obj_t * obj, lv_coord_t depth, void * user_data);
 static void update_resolution(lv_disp_t * disp);
 static void scr_load_internal(lv_obj_t * scr);
 static void scr_load_anim_start(lv_anim_t * a);
@@ -926,7 +926,7 @@ static void update_resolution(lv_disp_t * disp)
     lv_disp_send_event(disp, LV_EVENT_RESOLUTION_CHANGED, NULL);
 }
 
-static lv_obj_tree_walk_res_t invalidate_layout_cb(lv_obj_t * obj, void * user_data)
+static lv_obj_tree_walk_res_t invalidate_layout_cb(lv_obj_t * obj, lv_coord_t depth, void * user_data)
 {
     LV_UNUSED(user_data);
     lv_obj_mark_layout_as_dirty(obj);

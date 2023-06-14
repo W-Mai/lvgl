@@ -95,6 +95,7 @@ const lv_obj_class_t lv_obj_class = {
     .group_def = LV_OBJ_CLASS_GROUP_DEF_FALSE,
     .instance_size = (sizeof(lv_obj_t)),
     .base_class = NULL,
+    .class_name = "lv_obj",
 };
 
 /**********************

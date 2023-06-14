@@ -31,7 +31,8 @@
  **********************/
 static void lv_obj_del_async_cb(void * obj);
 static void obj_del_core(lv_obj_t * obj);
-static lv_obj_tree_walk_res_t walk_core(lv_obj_t * obj, lv_obj_tree_walk_cb_t cb, void * user_data);
+static lv_obj_tree_walk_res_t walk_core(lv_obj_t * obj, lv_obj_tree_walk_cb_t cb, lv_coord_t depth, void * user_data);
+static lv_obj_tree_walk_res_t lv_obj_dump_tree_cb(lv_obj_t * obj, lv_coord_t depth, void * user_data);
 
 /**********************
  *  STATIC VARIABLES
@@ -351,7 +352,14 @@ uint32_t lv_obj_get_index(const lv_obj_t * obj)
 
 void lv_obj_tree_walk(lv_obj_t * start_obj, lv_obj_tree_walk_cb_t cb, void * user_data)
 {
-    walk_core(start_obj, cb, user_data);
+    lv_coord_t start_depth = start_obj == NULL ? -1 : 0;
+
+    walk_core(start_obj, cb, start_depth, user_data);
+}
+
+void lv_obj_dump_tree(lv_obj_t * start_obj)
+{
+    lv_obj_tree_walk(start_obj, lv_obj_dump_tree_cb, NULL);
 }
 
 /**********************
@@ -441,7 +449,7 @@ static void obj_del_core(lv_obj_t * obj)
 }
 
 
-static lv_obj_tree_walk_res_t walk_core(lv_obj_t * obj, lv_obj_tree_walk_cb_t cb, void * user_data)
+static lv_obj_tree_walk_res_t walk_core(lv_obj_t * obj, lv_obj_tree_walk_cb_t cb, lv_coord_t depth, void * user_data)
 {
     lv_obj_tree_walk_res_t res = LV_OBJ_TREE_WALK_NEXT;
 
@@ -450,23 +458,106 @@ static lv_obj_tree_walk_res_t walk_core(lv_obj_t * obj, lv_obj_tree_walk_cb_t cb
         while(disp) {
             uint32_t i;
             for(i = 0; i < disp->screen_cnt; i++) {
-                walk_core(disp->screens[i], cb, user_data);
+                walk_core(disp->screens[i], cb, depth + 1, user_data);
             }
             disp = lv_disp_get_next(disp);
         }
         return LV_OBJ_TREE_WALK_END;    /*The value doesn't matter as it wasn't called recursively*/
     }
 
-    res = cb(obj, user_data);
+    res = cb(obj, depth, user_data);
 
     if(res == LV_OBJ_TREE_WALK_END) return LV_OBJ_TREE_WALK_END;
 
     if(res != LV_OBJ_TREE_WALK_SKIP_CHILDREN) {
         uint32_t i;
         for(i = 0; i < lv_obj_get_child_cnt(obj); i++) {
-            res = walk_core(lv_obj_get_child(obj, i), cb, user_data);
+            res = walk_core(lv_obj_get_child(obj, i), cb, depth + 1, user_data);
             if(res == LV_OBJ_TREE_WALK_END) return LV_OBJ_TREE_WALK_END;
         }
     }
+    return LV_OBJ_TREE_WALK_NEXT;
+}
+
+static void lv_obj_dump_tree_print_intend(lv_coord_t depth, const char * splitter)
+{
+    /*print depth splitter*/
+    for(int i = 0; i < depth; ++i) {
+        lv_log("%s", splitter);
+    }
+}
+
+static lv_obj_tree_walk_res_t lv_obj_dump_tree_cb(lv_obj_t * obj, lv_coord_t depth, void * user_data)
+{
+    lv_coord_t intend = depth;
+
+    lv_obj_dump_tree_print_intend(depth, "  ");
+    lv_log("- ptr: %p\n", obj);
+
+    lv_obj_dump_tree_print_intend(depth + 1, "  ");
+    lv_log("name: %s\n", obj->class_p->class_name);
+
+    lv_area_t area;
+    lv_obj_get_coords(obj, &area);
+    lv_obj_dump_tree_print_intend(depth + 1, "  ");
+    lv_log("area: [%d, %d, %d, %d]\n", area.x1, area.y1, area.x2, area.y2);
+
+    lv_coord_t w = lv_obj_get_width(obj);
+    lv_coord_t h = lv_obj_get_height(obj);
+    lv_obj_dump_tree_print_intend(depth + 1, "  ");
+    lv_log("size: [%d, %d]\n", w, h);
+
+    lv_color_t bg_color = lv_obj_get_style_bg_color(obj, LV_PART_MAIN);
+    lv_obj_dump_tree_print_intend(depth + 1, "  ");
+    lv_log("bg_color: [%d, %d, %d]\n", bg_color.red, bg_color.green, bg_color.blue);
+
+    lv_opa_t bg_opa = lv_obj_get_style_bg_opa(obj, LV_PART_MAIN);
+    lv_obj_dump_tree_print_intend(depth + 1, "  ");
+    lv_log("bg_opa: %d\n", bg_opa);
+
+    lv_color_t border_color = lv_obj_get_style_border_color(obj, LV_PART_MAIN);
+    lv_obj_dump_tree_print_intend(depth + 1, "  ");
+    lv_log("border_color: [%d, %d, %d]\n", border_color.red, border_color.green, border_color.blue);
+
+    lv_coord_t border_width = lv_obj_get_style_border_width(obj, LV_PART_MAIN);
+    lv_obj_dump_tree_print_intend(depth + 1, "  ");
+    lv_log("border_width: %d\n", border_width);
+
+    lv_coord_t radius = lv_obj_get_style_radius(obj, LV_PART_MAIN);
+    lv_obj_dump_tree_print_intend(depth + 1, "  ");
+    lv_log("radius: %d\n", radius);
+
+    lv_area_t padding = {
+        .x1 = lv_obj_get_style_pad_left(obj, LV_PART_MAIN),
+        .y1 = lv_obj_get_style_pad_top(obj, LV_PART_MAIN),
+        .x2 = lv_obj_get_style_pad_right(obj, LV_PART_MAIN),
+        .y2 = lv_obj_get_style_pad_bottom(obj, LV_PART_MAIN),
+    };
+
+    lv_obj_dump_tree_print_intend(depth + 1, "  ");
+    lv_log("padding: [%d, %d, %d, %d]\n", padding.x1, padding.y1, padding.x2, padding.y2);
+
+    lv_area_t margin = {
+        .x1 = lv_obj_get_style_margin_left(obj, LV_PART_MAIN),
+        .y1 = lv_obj_get_style_margin_top(obj, LV_PART_MAIN),
+        .x2 = lv_obj_get_style_margin_right(obj, LV_PART_MAIN),
+        .y2 = lv_obj_get_style_margin_bottom(obj, LV_PART_MAIN),
+    };
+
+    lv_obj_dump_tree_print_intend(depth + 1, "  ");
+    lv_log("margin: [%d, %d, %d, %d]\n", margin.x1, margin.y1, margin.x2, margin.y2);
+
+    lv_point_t offset = {
+        .x = lv_obj_get_style_translate_x(obj, LV_PART_MAIN),
+        .y = lv_obj_get_style_translate_y(obj, LV_PART_MAIN),
+    };
+
+    lv_obj_dump_tree_print_intend(depth + 1, "  ");
+    lv_log("offset: [%d, %d]\n", offset.x, offset.y);
+
+    // print children
+    lv_obj_dump_tree_print_intend(depth + 1, "  ");
+    lv_log("children:\n");
+
     return LV_OBJ_TREE_WALK_NEXT;
 }
