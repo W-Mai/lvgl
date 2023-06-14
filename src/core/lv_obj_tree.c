@@ -520,12 +520,12 @@ static void lv_obj_dump_tree_print_intend(lv_coord_t depth, const char * splitte
 void lv_pack_write_dict(lv_pack_t * pack, const char * key, const char * value)
 {
     lv_obj_dump_tree_print_intend(pack->depth, "  ");
-    lv_pack_write_str(pack, key);
-    lv_pack_write_str(pack, ": ");
+    pack->write(key);
+    pack->write(": ");
     if(value == NULL)
         return ;
-    lv_pack_write_str(pack, value);
-    lv_pack_write_str(pack, "\n");
+    pack->write(value);
+    pack->write("\n");
 }
 void lv_pack_write_array(lv_pack_t * pack)
 {
@@ -550,7 +550,26 @@ void lv_pack_write_array_num_inline(lv_pack_t * pack, uint32_t num_cnt, ...)
 }
 void lv_pack_write_str(lv_pack_t * pack, const char * str)
 {
-    pack->write("%s", str);
+    char* p = (char*)str;
+    // transform all escape characters
+    while (*p != '\0') {
+        if (*p == '\n') {
+            pack->write("\\n");
+        } else if (*p == '\r') {
+            pack->write("\\r");
+        } else if (*p == '\t') {
+            pack->write("\\t");
+        } else if (*p == '\\') {
+            pack->write("\\\\");
+        } else if (*p == '\"') {
+            pack->write("\\\"");
+        } else if (*p == '\'') {
+            pack->write("''");
+        } else {
+            pack->write("%c", *p);
+        }
+        p++;
+    }
 }
 void lv_pack_write_num(lv_pack_t * pack, int32_t num)
 {
@@ -581,7 +600,10 @@ static lv_obj_tree_walk_res_t lv_obj_dump_tree_cb(lv_obj_t * obj, lv_coord_t dep
     pack->write_ptr(pack, obj);
     pack->write("\n");
 
-    pack->write_dict(pack, "type", obj->class_p->class_name);
+    if (obj->class_p->class_name != NULL)
+        pack->write_dict(pack, "type", obj->class_p->class_name);
+    else
+        pack->write_dict(pack, "type", "unknown");
 
     lv_area_t area;
     lv_obj_get_coords(obj, &area);
@@ -642,6 +664,8 @@ static lv_obj_tree_walk_res_t lv_obj_dump_tree_cb(lv_obj_t * obj, lv_coord_t dep
     };
     pack->write_dict(pack, "offset", NULL);
     pack->write_array_num_inline(pack, 2, offset.x, offset.y);
+
+    lv_obj_send_event(obj, LV_EVENT_DUMP_OBJ_CUSTOM, user_data);
 
     return LV_OBJ_TREE_WALK_NEXT;
 }
