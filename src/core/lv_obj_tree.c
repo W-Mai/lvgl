@@ -550,22 +550,28 @@ void lv_pack_write_array_num_inline(lv_pack_t * pack, uint32_t num_cnt, ...)
 }
 void lv_pack_write_str(lv_pack_t * pack, const char * str)
 {
-    char* p = (char*)str;
+    char * p = (char *)str;
     // transform all escape characters
-    while (*p != '\0') {
-        if (*p == '\n') {
+    while(*p != '\0') {
+        if(*p == '\n') {
             pack->write("\\n");
-        } else if (*p == '\r') {
+        }
+        else if(*p == '\r') {
             pack->write("\\r");
-        } else if (*p == '\t') {
+        }
+        else if(*p == '\t') {
             pack->write("\\t");
-        } else if (*p == '\\') {
+        }
+        else if(*p == '\\') {
             pack->write("\\\\");
-        } else if (*p == '\"') {
+        }
+        else if(*p == '\"') {
             pack->write("\\\"");
-        } else if (*p == '\'') {
+        }
+        else if(*p == '\'') {
             pack->write("''");
-        } else {
+        }
+        else {
             pack->write("%c", *p);
         }
         p++;
@@ -600,7 +606,7 @@ static lv_obj_tree_walk_res_t lv_obj_dump_tree_cb(lv_obj_t * obj, lv_coord_t dep
     pack->write_ptr(pack, obj);
     pack->write("\n");
 
-    if (obj->class_p->class_name != NULL)
+    if(obj->class_p->class_name != NULL)
         pack->write_dict(pack, "type", obj->class_p->class_name);
     else
         pack->write_dict(pack, "type", "unknown");
@@ -614,6 +620,11 @@ static lv_obj_tree_walk_res_t lv_obj_dump_tree_cb(lv_obj_t * obj, lv_coord_t dep
     lv_coord_t h = lv_obj_get_height(obj);
     pack->write_dict(pack, "size", NULL);
     pack->write_array_num_inline(pack, 2, w, h);
+
+    lv_opa_t obj_opa = lv_obj_get_style_opa(obj, LV_PART_MAIN);
+    pack->write_dict(pack, "opa", NULL);
+    pack->write_num(pack, obj_opa);
+    pack->write("\n");
 
     lv_color_t bg_color = lv_obj_get_style_bg_color(obj, LV_PART_MAIN);
     pack->write_dict(pack, "bg_color", NULL);
