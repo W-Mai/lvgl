@@ -65,6 +65,7 @@ typedef struct _lv_obj_class_t {
     uint32_t group_def : 2;            /**< Value from ::lv_obj_class_group_def_t*/
     uint32_t instance_size : 16;
     uint32_t theme_inheritable : 1;    /**< Value from ::lv_obj_class_theme_inheritable_t*/
+    const char * class_name;            /**< Name of the class.*/
 } lv_obj_class_t;
 
 /**********************

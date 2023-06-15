@@ -37,7 +37,7 @@ typedef enum {
     LV_OBJ_TREE_WALK_END,
 } lv_obj_tree_walk_res_t;
 
-typedef lv_obj_tree_walk_res_t (*lv_obj_tree_walk_cb_t)(struct _lv_obj_t *, void *);
+typedef lv_obj_tree_walk_res_t (*lv_obj_tree_walk_cb_t)(struct _lv_obj_t *, lv_coord_t, void *);
 
 /**********************
  * GLOBAL PROTOTYPES
@@ -163,6 +163,8 @@ uint32_t lv_obj_get_index(const struct _lv_obj_t * obj);
  * @param user_data     pointer to any user related data (will be passed to `cb`)
  */
 void lv_obj_tree_walk(struct _lv_obj_t * start_obj, lv_obj_tree_walk_cb_t cb, void * user_data);
+
+void lv_obj_dump_tree(struct _lv_obj_t * start_obj);
 
 /**********************
  *      MACROS

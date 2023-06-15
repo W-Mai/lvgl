@@ -18,6 +18,7 @@
 #include "../../misc/lv_bidi.h"
 #include "../../misc/lv_txt_ap.h"
 #include "../../misc/lv_printf.h"
+#include "../../misc/lv_pack.h"
 
 /*********************
  *      DEFINES
@@ -66,7 +67,8 @@ const lv_obj_class_t lv_label_class = {
     .width_def = LV_SIZE_CONTENT,
     .height_def = LV_SIZE_CONTENT,
     .instance_size = sizeof(lv_label_t),
-    .base_class = &lv_obj_class
+    .base_class = &lv_obj_class,
+    .class_name = "lv_label",
 };
 
 /**********************
@@ -740,6 +742,12 @@ static void lv_label_event(const lv_obj_class_t * class_p, lv_event_t * e)
         lv_point_t * self_size = lv_event_get_param(e);
         self_size->x = LV_MAX(self_size->x, label->size_cache.x);
         self_size->y = LV_MAX(self_size->y, label->size_cache.y);
+    }
+    else if(code == LV_EVENT_DUMP_OBJ_INFO) {
+        lv_pack_t * pack = lv_event_get_param(e);
+        pack->write_key_pair_begin(pack, "text");
+        pack->write_str(pack, lv_label_get_text(obj));
+        pack->write_key_pair_end(pack);
     }
     else if(code == LV_EVENT_DRAW_MAIN) {
         draw_main(e);

@@ -6,16 +6,15 @@
 /*********************
  *      INCLUDES
  *********************/
-#include <stdlib.h>
-
-#include "lv_obj.h"
-#include "lv_indev.h"
-#include "lv_indev_private.h"
+#include "../misc/lv_pack.h"
+#include "../misc/lv_anim.h"
+#include "../misc/lv_async.h"
+#include "../misc/lv_gc.h"
 #include "lv_disp.h"
 #include "lv_disp_private.h"
-#include "../misc/lv_anim.h"
-#include "../misc/lv_gc.h"
-#include "../misc/lv_async.h"
+#include "lv_indev.h"
+#include "lv_indev_private.h"
+#include "lv_obj.h"
 
 /*********************
  *      DEFINES
@@ -31,8 +30,8 @@
  **********************/
 static void lv_obj_del_async_cb(void * obj);
 static void obj_del_core(lv_obj_t * obj);
-static lv_obj_tree_walk_res_t walk_core(lv_obj_t * obj, lv_obj_tree_walk_cb_t cb, void * user_data);
-
+static lv_obj_tree_walk_res_t walk_core(lv_obj_t * obj, lv_obj_tree_walk_cb_t cb, lv_coord_t depth, void * user_data);
+static lv_obj_tree_walk_res_t dump_tree_core(lv_obj_t * obj, lv_coord_t depth, void * user_data);
 /**********************
  *  STATIC VARIABLES
  **********************/
@@ -351,7 +350,16 @@ uint32_t lv_obj_get_index(const lv_obj_t * obj)
 
 void lv_obj_tree_walk(lv_obj_t * start_obj, lv_obj_tree_walk_cb_t cb, void * user_data)
 {
-    walk_core(start_obj, cb, user_data);
+    walk_core(start_obj, cb, 0, user_data);
+}
+
+void lv_obj_dump_tree(lv_obj_t * start_obj)
+{
+    lv_pack_t * pack = lv_pack_get(LV_PACK_YAML);
+
+    pack->write_pack_begin(pack);
+    dump_tree_core(start_obj, 0, pack);
+    pack->write_pack_end(pack);
 }
 
 /**********************
@@ -441,7 +449,8 @@ static void obj_del_core(lv_obj_t * obj)
 }
 
 
-static lv_obj_tree_walk_res_t walk_core(lv_obj_t * obj, lv_obj_tree_walk_cb_t cb, void * user_data)
+static lv_obj_tree_walk_res_t walk_core(lv_obj_t * obj, lv_obj_tree_walk_cb_t cb, lv_coord_t depth,
+                                        void * user_data)
 {
     lv_obj_tree_walk_res_t res = LV_OBJ_TREE_WALK_NEXT;
 
@@ -450,23 +459,61 @@ static lv_obj_tree_walk_res_t walk_core(lv_obj_t * obj, lv_obj_tree_walk_cb_t cb
         while(disp) {
             uint32_t i;
             for(i = 0; i < disp->screen_cnt; i++) {
-                walk_core(disp->screens[i], cb, user_data);
+                walk_core(disp->screens[i], cb, depth + 1, user_data);
             }
             disp = lv_disp_get_next(disp);
         }
         return LV_OBJ_TREE_WALK_END;    /*The value doesn't matter as it wasn't called recursively*/
     }
 
-    res = cb(obj, user_data);
+    res = cb(obj, depth, user_data);
 
     if(res == LV_OBJ_TREE_WALK_END) return LV_OBJ_TREE_WALK_END;
 
     if(res != LV_OBJ_TREE_WALK_SKIP_CHILDREN) {
-        uint32_t i;
+        int32_t i;
         for(i = 0; i < lv_obj_get_child_cnt(obj); i++) {
-            res = walk_core(lv_obj_get_child(obj, i), cb, user_data);
+            res = walk_core(lv_obj_get_child(obj, i), cb, depth + 1, user_data);
             if(res == LV_OBJ_TREE_WALK_END) return LV_OBJ_TREE_WALK_END;
         }
     }
+    return LV_OBJ_TREE_WALK_NEXT;
+}
+
+static lv_obj_tree_walk_res_t dump_tree_core(lv_obj_t * obj, lv_coord_t depth, void * user_data)
+{
+    lv_obj_tree_walk_res_t res = LV_OBJ_TREE_WALK_NEXT;
+    lv_pack_t * pack = (lv_pack_t *)user_data;
+
+    if(obj == NULL) {
+        lv_disp_t * disp = lv_disp_get_next(NULL);
+        while(disp) {
+            uint32_t i;
+            pack->write_array_begin(pack);
+            lv_disp_send_event(disp, LV_EVENT_DUMP_OBJ_INFO, user_data);
+            pack->write_key_pair_end(pack);
+            pack->write_dict_begin(pack, "children");
+            for(i = 0; i < disp->screen_cnt; i++) {
+                dump_tree_core(disp->screens[i], depth + 1, user_data);
+            }
+            pack->write_dict_end(pack);
+            pack->write_array_end(pack);
+            disp = lv_disp_get_next(disp);
+        }
+        return LV_OBJ_TREE_WALK_END;    /*The value doesn't matter as it wasn't called recursively*/
+    }
+
+    pack->write_array_begin(pack);
+    lv_obj_send_event(obj, LV_EVENT_DUMP_OBJ_INFO, user_data);
+
+    int32_t i;
+    pack->write_dict_begin(pack, "children");
+    for(i = 0; i < lv_obj_get_child_cnt(obj); i++) {
+        res = dump_tree_core(lv_obj_get_child(obj, i), depth + 1, user_data);
+        if(res == LV_OBJ_TREE_WALK_END)
+            return LV_OBJ_TREE_WALK_END;
+    }
+    pack->write_dict_end(pack);
+    pack->write_array_end(pack);
     return LV_OBJ_TREE_WALK_NEXT;
 }

@@ -12,6 +12,7 @@
 #include "../core/lv_disp.h"
 #include "../core/lv_disp_private.h"
 #include "../misc/lv_gc.h"
+#include "../misc/lv_pack.h"
 
 #if LV_USE_DRAW_SW
     #include "../draw/sw/lv_draw_sw.h"
@@ -46,7 +47,7 @@
 /**********************
  *  STATIC PROTOTYPES
  **********************/
-static lv_obj_tree_walk_res_t invalidate_layout_cb(lv_obj_t * obj, void * user_data);
+static lv_obj_tree_walk_res_t invalidate_layout_cb(lv_obj_t * obj, lv_coord_t depth, void * user_data);
 static void update_resolution(lv_disp_t * disp);
 static void scr_load_internal(lv_obj_t * scr);
 static void scr_load_anim_start(lv_anim_t * a);
@@ -55,6 +56,7 @@ static void set_x_anim(void * obj, int32_t v);
 static void set_y_anim(void * obj, int32_t v);
 static void scr_anim_ready(lv_anim_t * a);
 static bool is_out_anim(lv_scr_load_anim_t a);
+static void dump_disp_info(lv_event_t * e);
 
 /**********************
  *  STATIC VARIABLES
@@ -148,6 +150,8 @@ lv_disp_t * lv_disp_create(lv_coord_t hor_res, lv_coord_t ver_res)
     if(disp_def == NULL) disp_def = disp; /*Initialize the default display*/
 
     lv_timer_ready(disp->refr_timer); /*Be sure the screen will be refreshed immediately on start up*/
+
+    lv_disp_add_event(disp, dump_disp_info, LV_EVENT_DUMP_OBJ_INFO, NULL);
 
     return disp;
 }
@@ -926,7 +930,7 @@ static void update_resolution(lv_disp_t * disp)
     lv_disp_send_event(disp, LV_EVENT_RESOLUTION_CHANGED, NULL);
 }
 
-static lv_obj_tree_walk_res_t invalidate_layout_cb(lv_obj_t * obj, void * user_data)
+static lv_obj_tree_walk_res_t invalidate_layout_cb(lv_obj_t * obj, lv_coord_t depth, void * user_data)
 {
     LV_UNUSED(user_data);
     lv_obj_mark_layout_as_dirty(obj);
@@ -998,4 +1002,17 @@ static bool is_out_anim(lv_scr_load_anim_t anim_type)
            anim_type == LV_SCR_LOAD_ANIM_OUT_RIGHT ||
            anim_type == LV_SCR_LOAD_ANIM_OUT_TOP   ||
            anim_type == LV_SCR_LOAD_ANIM_OUT_BOTTOM;
+}
+
+static void dump_disp_info(lv_event_t * e)
+{
+    lv_disp_t * disp = lv_event_get_target(e);
+    lv_pack_t * pack = (lv_pack_t *)lv_event_get_param(e);
+
+    pack->write_key_pair_begin(pack, "ptr");
+    pack->write_ptr(pack, disp);
+    pack->write_key_pair_end(pack);
+
+    pack->write_key_pair_begin(pack, "type");
+    pack->write_str(pack, "lv_disp");
 }
