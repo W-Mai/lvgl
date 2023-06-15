@@ -39,12 +39,6 @@ typedef enum {
 
 typedef lv_obj_tree_walk_res_t (*lv_obj_tree_walk_cb_t)(struct _lv_obj_t *, lv_coord_t, void *);
 
-typedef struct {
-    lv_obj_tree_walk_cb_t walking;
-    lv_obj_tree_walk_cb_t walk_child_pre;
-    lv_obj_tree_walk_cb_t walk_child_post;
-} lv_obj_tree_walk_cbs_t;
-
 /**********************
  * GLOBAL PROTOTYPES
  **********************/
@@ -168,7 +162,7 @@ uint32_t lv_obj_get_index(const struct _lv_obj_t * obj);
  * @param cb            call this callback on the objects
  * @param user_data     pointer to any user related data (will be passed to `cb`)
  */
-void lv_obj_tree_walk(struct _lv_obj_t * start_obj, lv_obj_tree_walk_cbs_t * cbs, void * user_data);
+void lv_obj_tree_walk(struct _lv_obj_t * start_obj, lv_obj_tree_walk_cb_t cb, void * user_data);
 
 void lv_obj_dump_tree(struct _lv_obj_t * start_obj);
 

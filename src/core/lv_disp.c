@@ -921,12 +921,7 @@ static void update_resolution(lv_disp_t * disp)
     disp->inv_p = 0;
     lv_obj_invalidate(disp->sys_layer);
 
-    lv_obj_tree_walk_cbs_t walk_cbs = {
-        .walking = invalidate_layout_cb,
-        .walk_child_pre = NULL,
-        .walk_child_post = NULL,
-    };
-    lv_obj_tree_walk(NULL, &walk_cbs, NULL);
+    lv_obj_tree_walk(NULL, invalidate_layout_cb, NULL);
 
     lv_disp_send_event(disp, LV_EVENT_RESOLUTION_CHANGED, NULL);
 }
