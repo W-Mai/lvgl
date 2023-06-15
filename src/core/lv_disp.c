@@ -12,6 +12,7 @@
 #include "../core/lv_disp.h"
 #include "../core/lv_disp_private.h"
 #include "../misc/lv_gc.h"
+#include "../misc/lv_pack.h"
 
 #if LV_USE_DRAW_SW
     #include "../draw/sw/lv_draw_sw.h"
