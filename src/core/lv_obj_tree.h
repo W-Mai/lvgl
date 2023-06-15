@@ -177,8 +177,12 @@ typedef struct _lv_pack_t {
 
     void (*write)(const char * format, ...);
 
-    void (*write_dict)(struct _lv_pack_t * pack, const char * key, const char * value);
-    void (*write_array)(struct _lv_pack_t * pack);
+    void (*write_dict_begin)(struct _lv_pack_t * pack, const char * key);
+    void (*write_dict_end)(struct _lv_pack_t * pack);
+    void (*write_key_pair_begin)(struct _lv_pack_t * pack, const char * key);
+    void (*write_key_pair_end)(struct _lv_pack_t * pack);
+    void (*write_array_begin)(struct _lv_pack_t * pack);
+    void (*write_array_end)(struct _lv_pack_t * pack);
     void (*write_array_num_inline)(struct _lv_pack_t * pack, uint32_t num_cnt, ...);
     void (*write_str)(struct _lv_pack_t * pack, const char * str);
     void (*write_num)(struct _lv_pack_t * pack, int32_t num);
@@ -187,15 +191,18 @@ typedef struct _lv_pack_t {
     void (*write_null)(struct _lv_pack_t * pack);
 } lv_pack_t;
 
-void lv_pack_write_dict(lv_pack_t * pack, const char * key, const char * value);
-void lv_pack_write_array(lv_pack_t * pack);
+void lv_pack_write_dict_begin(lv_pack_t * pack, const char * key);
+void lv_pack_write_dict_end(lv_pack_t * pack);
+void lv_pack_write_key_pair_begin(lv_pack_t * pack, const char * key);
+void lv_pack_write_key_pair_end(lv_pack_t * pack);
+void lv_pack_write_array_begin(lv_pack_t * pack);
+void lv_pack_write_array_end(lv_pack_t * pack);
 void lv_pack_write_array_num_inline(lv_pack_t * pack, uint32_t num_cnt, ...);
 void lv_pack_write_str(lv_pack_t * pack, const char * str);
 void lv_pack_write_num(lv_pack_t * pack, int32_t num);
 void lv_pack_write_ptr(lv_pack_t * pack, const void * ptr);
 void lv_pack_write_bool(lv_pack_t * pack, bool b);
 void lv_pack_write_null(lv_pack_t * pack);
-
 
 /**********************
  *      MACROS

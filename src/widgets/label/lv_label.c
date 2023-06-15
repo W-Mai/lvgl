@@ -744,9 +744,9 @@ static void lv_label_event(const lv_obj_class_t * class_p, lv_event_t * e)
     }
     else if(code == LV_EVENT_DUMP_OBJ_CUSTOM) {
         lv_pack_t * pack = lv_event_get_param(e);
-        pack->write_dict(pack, "text", NULL);
+        pack->write_key_pair_begin(pack, "text");
         pack->write_str(pack, lv_label_get_text(obj));
-        pack->write("\n");
+        pack->write_key_pair_end(pack);
     }
     else if(code == LV_EVENT_DRAW_MAIN) {
         draw_main(e);
