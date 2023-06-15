@@ -170,6 +170,8 @@ void lv_pack_yaml_write_str(lv_pack_t * pack, const char * str)
         }
         else if(*p == '\'') {
             pack->write("''");
+        } else if (*p == ':') {
+            pack->write("':'");
         }
         else {
             pack->write("%c", *p);
