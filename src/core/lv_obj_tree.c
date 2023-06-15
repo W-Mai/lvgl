@@ -6,8 +6,7 @@
 /*********************
  *      INCLUDES
  *********************/
-#include <src/misc/lv_pack.h>
-
+#include "../misc/lv_pack.h"
 #include "../misc/lv_anim.h"
 #include "../misc/lv_async.h"
 #include "../misc/lv_gc.h"

@@ -80,7 +80,7 @@ static void draw_scrollbar(lv_obj_t * obj, lv_draw_ctx_t * draw_ctx);
 static lv_res_t scrollbar_init_draw_dsc(lv_obj_t * obj, lv_draw_rect_dsc_t * dsc);
 static bool obj_valid_child(const lv_obj_t * parent, const lv_obj_t * obj_to_find);
 static void lv_obj_set_state(lv_obj_t * obj, lv_state_t new_state);
-static void obj_dump_obj(lv_event_t * e);
+static void dump_obj_info(lv_event_t * e);
 /**********************
 *  STATIC VARIABLES
 **********************/
@@ -937,7 +937,7 @@ static void lv_obj_event(const lv_obj_class_t * class_p, lv_event_t * e)
         lv_event_set_ext_draw_size(e, d);
     }
     else if(code == LV_EVENT_DUMP_OBJ_INFO) {
-        obj_dump_obj(e);
+        dump_obj_info(e);
     }
     else if(code == LV_EVENT_DRAW_MAIN || code == LV_EVENT_DRAW_POST || code == LV_EVENT_COVER_CHECK) {
         lv_obj_draw(e);
@@ -1052,7 +1052,7 @@ static bool obj_valid_child(const lv_obj_t * parent, const lv_obj_t * obj_to_fin
     return false;
 }
 
-static void obj_dump_obj(lv_event_t * e)
+static void dump_obj_info(lv_event_t * e)
 {
     lv_obj_t * obj = lv_event_get_current_target(e);
 
