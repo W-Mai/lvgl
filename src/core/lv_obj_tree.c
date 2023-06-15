@@ -7,7 +7,6 @@
  *      INCLUDES
  *********************/
 #include <src/misc/lv_pack.h>
-#include <stdlib.h>
 
 #include "../misc/lv_anim.h"
 #include "../misc/lv_async.h"
@@ -359,9 +358,9 @@ void lv_obj_dump_tree(lv_obj_t * start_obj)
 {
     lv_pack_t * pack = lv_pack_get(LV_PACK_YAML);
 
-    lv_log("---\n");
+    pack->write_pack_begin(pack);
     dump_tree_core(start_obj, 0, pack);
-    lv_log("...\n");
+    pack->write_pack_end(pack);
 }
 
 /**********************

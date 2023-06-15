@@ -26,6 +26,8 @@
  *  STATIC PROTOTYPES
  **********************/
 
+void lv_pack_yaml_write_pack_begin(lv_pack_t * pack);
+void lv_pack_yaml_write_pack_end(lv_pack_t * pack);
 void lv_pack_yaml_write_dict_begin(lv_pack_t * pack, const char * key);
 void lv_pack_yaml_write_dict_end(lv_pack_t * pack);
 void lv_pack_yaml_write_key_pair_begin(lv_pack_t * pack, const char * key);
@@ -45,6 +47,8 @@ void lv_pack_yaml_write_null(lv_pack_t * pack);
 static lv_pack_t lv_pack_yaml = {
     .depth = 0,
     .write = lv_log,
+    .write_pack_begin = lv_pack_yaml_write_pack_begin,
+    .write_pack_end = lv_pack_yaml_write_pack_end,
     .write_dict_begin = lv_pack_yaml_write_dict_begin,
     .write_dict_end = lv_pack_yaml_write_dict_end,
     .write_key_pair_begin = lv_pack_yaml_write_key_pair_begin,
@@ -86,6 +90,18 @@ static void lv_obj_dump_tree_print_intend(lv_pack_t * pack, const char * splitte
     for(int i = 0; i < pack->depth; ++i) {
         pack->write("%s", splitter);
     }
+}
+
+void lv_pack_yaml_write_pack_begin(lv_pack_t * pack)
+{
+    pack->depth = 0;
+    pack->write("---\n");
+}
+
+void lv_pack_yaml_write_pack_end(lv_pack_t * pack)
+{
+    pack->depth = 0;
+    pack->write("...\n");
 }
 
 void lv_pack_yaml_write_dict_begin(lv_pack_t * pack, const char * key)

@@ -31,6 +31,9 @@ typedef struct _lv_pack_t {
 
     void (*write)(const char * format, ...);
 
+    void (*write_pack_begin)(struct _lv_pack_t * pack);
+    void (*write_pack_end)(struct _lv_pack_t * pack);
+
     void (*write_dict_begin)(struct _lv_pack_t * pack, const char * key);
     void (*write_dict_end)(struct _lv_pack_t * pack);
     void (*write_key_pair_begin)(struct _lv_pack_t * pack, const char * key);
