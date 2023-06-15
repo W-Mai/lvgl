@@ -89,7 +89,7 @@ typedef enum {
     LV_EVENT_GET_SELF_SIZE,       /**< Get the internal size of a widget*/
 
     /** Dump Tree events*/
-    LV_EVENT_DUMP_OBJ_CUSTOM,            /**< Dump the object's custom data */
+    LV_EVENT_DUMP_OBJ_INFO,            /**< Dump the object's custom data */
 
     /** Events of optional LVGL components*/
 #if LV_USE_MSG

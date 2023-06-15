@@ -742,7 +742,7 @@ static void lv_label_event(const lv_obj_class_t * class_p, lv_event_t * e)
         self_size->x = LV_MAX(self_size->x, label->size_cache.x);
         self_size->y = LV_MAX(self_size->y, label->size_cache.y);
     }
-    else if(code == LV_EVENT_DUMP_OBJ_CUSTOM) {
+    else if(code == LV_EVENT_DUMP_OBJ_INFO) {
         lv_pack_t * pack = lv_event_get_param(e);
         pack->write_key_pair_begin(pack, "text");
         pack->write_str(pack, lv_label_get_text(obj));

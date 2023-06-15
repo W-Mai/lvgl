@@ -80,10 +80,10 @@ static void draw_scrollbar(lv_obj_t * obj, lv_draw_ctx_t * draw_ctx);
 static lv_res_t scrollbar_init_draw_dsc(lv_obj_t * obj, lv_draw_rect_dsc_t * dsc);
 static bool obj_valid_child(const lv_obj_t * parent, const lv_obj_t * obj_to_find);
 static void lv_obj_set_state(lv_obj_t * obj, lv_state_t new_state);
-
+static void obj_dump_obj(lv_event_t * e);
 /**********************
- *  STATIC VARIABLES
- **********************/
+*  STATIC VARIABLES
+**********************/
 static bool lv_initialized = false;
 const lv_obj_class_t lv_obj_class = {
     .constructor_cb = lv_obj_constructor,
@@ -936,6 +936,9 @@ static void lv_obj_event(const lv_obj_class_t * class_p, lv_event_t * e)
         lv_coord_t d = lv_obj_calculate_ext_draw_size(obj, LV_PART_MAIN);
         lv_event_set_ext_draw_size(e, d);
     }
+    else if(code == LV_EVENT_DUMP_OBJ_INFO) {
+        obj_dump_obj(e);
+    }
     else if(code == LV_EVENT_DRAW_MAIN || code == LV_EVENT_DRAW_POST || code == LV_EVENT_COVER_CHECK) {
         lv_obj_draw(e);
     }
@@ -1047,4 +1050,103 @@ static bool obj_valid_child(const lv_obj_t * parent, const lv_obj_t * obj_to_fin
         }
     }
     return false;
+}
+
+static void obj_dump_obj(lv_event_t * e)
+{
+    lv_obj_t * obj = lv_event_get_current_target(e);
+
+    lv_pack_t * pack = (lv_pack_t *)lv_event_get_param(e);
+
+    pack->write_key_pair_begin(pack, "ptr");
+    pack->write_ptr(pack, obj);
+    pack->write_key_pair_end(pack);
+
+    if(obj->class_p->class_name) {
+        pack->write_key_pair_begin(pack, "type");
+        pack->write_str(pack, obj->class_p->class_name);
+        pack->write_key_pair_end(pack);
+    }
+    else {
+        pack->write_key_pair_begin(pack, "type");
+        pack->write_str(pack, "unknown");
+        pack->write_key_pair_end(pack);
+    }
+
+    pack->write_key_pair_begin(pack, "area");
+    pack->write_array_num_inline(pack, 4, obj->coords.x1, obj->coords.y1, obj->coords.x2, obj->coords.y2);
+    pack->write_key_pair_end(pack);
+
+    pack->write_key_pair_begin(pack, "size");
+    pack->write_array_num_inline(pack, 2, lv_obj_get_width(obj), lv_obj_get_height(obj));
+    pack->write_key_pair_end(pack);
+
+    pack->write_key_pair_begin(pack, "opa");
+    pack->write_num(pack, lv_obj_get_style_opa(obj, LV_PART_MAIN));
+    pack->write_key_pair_end(pack);
+
+    pack->write_key_pair_begin(pack, "bg_color");
+    lv_color_t bg_color = lv_obj_get_style_bg_color(obj, LV_PART_MAIN);
+    pack->write_array_num_inline(pack, 3, bg_color.red, bg_color.green, bg_color.blue);
+    pack->write_key_pair_end(pack);
+
+
+    pack->write_key_pair_begin(pack, "bg_opa");
+    pack->write_num(pack, lv_obj_get_style_bg_opa(obj, LV_PART_MAIN));
+    pack->write_key_pair_end(pack);
+
+    pack->write_key_pair_begin(pack, "border_color");
+    lv_color_t border_color = lv_obj_get_style_border_color(obj, LV_PART_MAIN);
+    pack->write_array_num_inline(pack, 3, border_color.red, border_color.green, border_color.blue);
+    pack->write_key_pair_end(pack);
+
+    pack->write_key_pair_begin(pack, "border_opa");
+    pack->write_num(pack, lv_obj_get_style_border_opa(obj, LV_PART_MAIN));
+    pack->write_key_pair_end(pack);
+
+    pack->write_key_pair_begin(pack, "border_width");
+    pack->write_num(pack, lv_obj_get_style_border_width(obj, LV_PART_MAIN));
+    pack->write_key_pair_end(pack);
+
+    pack->write_key_pair_begin(pack, "border_side");
+    pack->write_num(pack, lv_obj_get_style_border_side(obj, LV_PART_MAIN));
+    pack->write_key_pair_end(pack);
+
+    pack->write_key_pair_begin(pack, "radius");
+    pack->write_num(pack, lv_obj_get_style_radius(obj, LV_PART_MAIN));
+    pack->write_key_pair_end(pack);
+
+
+    pack->write_key_pair_begin(pack, "padding");
+    lv_area_t padding = {
+        .x1 = lv_obj_get_style_pad_left(obj, LV_PART_MAIN),
+        .y1 = lv_obj_get_style_pad_top(obj, LV_PART_MAIN),
+        .x2 = lv_obj_get_style_pad_right(obj, LV_PART_MAIN),
+        .y2 = lv_obj_get_style_pad_bottom(obj, LV_PART_MAIN),
+    };
+    pack->write_array_num_inline(pack, 4, padding.x1, padding.y1, padding.x2, padding.y2);
+    pack->write_key_pair_end(pack);
+
+
+    pack->write_key_pair_begin(pack, "margin");
+    lv_area_t margin = {
+        .x1 = lv_obj_get_style_margin_left(obj, LV_PART_MAIN),
+        .y1 = lv_obj_get_style_margin_top(obj, LV_PART_MAIN),
+        .x2 = lv_obj_get_style_margin_right(obj, LV_PART_MAIN),
+        .y2 = lv_obj_get_style_margin_bottom(obj, LV_PART_MAIN),
+    };
+    pack->write_array_num_inline(pack, 4, margin.x1, margin.y1, margin.x2, margin.y2);
+    pack->write_key_pair_end(pack);
+
+    pack->write_key_pair_begin(pack, "align");
+    pack->write_num(pack, lv_obj_get_style_align(obj, LV_PART_MAIN));
+    pack->write_key_pair_end(pack);
+
+    pack->write_key_pair_begin(pack, "offset");
+    lv_point_t offset = {
+        .x = lv_obj_get_style_translate_x(obj, LV_PART_MAIN),
+        .y = lv_obj_get_style_translate_y(obj, LV_PART_MAIN),
+    };
+    pack->write_array_num_inline(pack, 2, offset.x, offset.y);
+    pack->write_key_pair_end(pack);
 }

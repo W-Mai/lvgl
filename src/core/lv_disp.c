@@ -55,6 +55,7 @@ static void set_x_anim(void * obj, int32_t v);
 static void set_y_anim(void * obj, int32_t v);
 static void scr_anim_ready(lv_anim_t * a);
 static bool is_out_anim(lv_scr_load_anim_t a);
+static void dump_disp_info(lv_event_t * e);
 
 /**********************
  *  STATIC VARIABLES
@@ -148,6 +149,8 @@ lv_disp_t * lv_disp_create(lv_coord_t hor_res, lv_coord_t ver_res)
     if(disp_def == NULL) disp_def = disp; /*Initialize the default display*/
 
     lv_timer_ready(disp->refr_timer); /*Be sure the screen will be refreshed immediately on start up*/
+
+    lv_disp_add_event(disp, dump_disp_info, LV_EVENT_DUMP_OBJ_INFO, NULL);
 
     return disp;
 }
@@ -998,4 +1001,17 @@ static bool is_out_anim(lv_scr_load_anim_t anim_type)
            anim_type == LV_SCR_LOAD_ANIM_OUT_RIGHT ||
            anim_type == LV_SCR_LOAD_ANIM_OUT_TOP   ||
            anim_type == LV_SCR_LOAD_ANIM_OUT_BOTTOM;
+}
+
+static void dump_disp_info(lv_event_t * e)
+{
+    lv_disp_t * disp = lv_event_get_target(e);
+    lv_pack_t * pack = (lv_pack_t *)lv_event_get_param(e);
+
+    pack->write_key_pair_begin(pack, "ptr");
+    pack->write_ptr(pack, disp);
+    pack->write_key_pair_end(pack);
+
+    pack->write_key_pair_begin(pack, "type");
+    pack->write_str(pack, "lv_disp");
 }
