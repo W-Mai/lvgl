@@ -35,6 +35,7 @@ typedef struct {
     const lv_color32_t * palette;
     uint32_t palette_size   : 9;
     uint32_t chroma_keyed   : 1;
+    uint32_t w_stride;
 } lv_draw_img_sup_t;
 
 typedef struct {

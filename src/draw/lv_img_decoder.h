@@ -120,6 +120,8 @@ typedef struct _lv_img_decoder_dsc_t {
      *  MUST be set in `open` function*/
     const uint8_t * img_data;
 
+    uint32_t w_stride;
+
     const lv_color32_t * palette;
     uint32_t palette_size;
 

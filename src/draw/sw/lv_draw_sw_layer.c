@@ -109,6 +109,7 @@ void lv_draw_sw_layer_blend(struct _lv_draw_ctx_t * draw_ctx, struct _lv_draw_la
     lv_img_dsc_t img;
     img.data = draw_ctx->buf;
     img.header.always_zero = 0;
+    img.w_stride = lv_align_up(lv_area_get_width(draw_ctx->buf_area), draw_ctx->stride_align);
     img.header.w = lv_area_get_width(draw_ctx->buf_area);
     img.header.h = lv_area_get_height(draw_ctx->buf_area);
     img.header.cf = draw_ctx->color_format;

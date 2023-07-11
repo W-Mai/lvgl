@@ -74,12 +74,21 @@ typedef struct {
 } lv_img_header_t;
 #endif
 
+typedef struct lv_img_buf_t {
+    void * buf;        /**< Pointer to the image data*/
+    uint32_t size;     /**< Size of `buf` in bytes*/
+    uint32_t w_stride; /**< Width stride in bytes*/
+    uint32_t h_stride; /**< Height stride in bytes*/
+} lv_img_buf_t;
+
 /** Image header it is compatible with
  * the result from image converter utility*/
 typedef struct {
     lv_img_header_t header; /**< A header describing the basics of the image*/
     uint32_t data_size;     /**< Size of the image in bytes*/
     const uint8_t * data;   /**< Pointer to the data of the image*/
+
+    uint32_t w_stride; /*width stride*/
 } lv_img_dsc_t;
 
 /**********************

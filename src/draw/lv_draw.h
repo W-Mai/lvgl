@@ -69,6 +69,11 @@ typedef struct _lv_draw_ctx_t  {
     lv_area_t * buf_area;
 
     /**
+     * buf_stride in pixel count
+     */
+    uint32_t stride_align;
+
+    /**
      * The current clip area with absolute coordinates, always the same or smaller than `buf_area`
      */
     const lv_area_t * clip_area;

@@ -26,6 +26,7 @@ typedef struct {
     SDL_Renderer * renderer;
     SDL_Texture * texture;
     lv_color_t * fb;
+    lv_color_t * fb2;
     uint8_t zoom;
     uint8_t ignore_size_chg;
 } lv_sdl_window_t;
@@ -100,7 +101,7 @@ lv_disp_t * lv_sdl_window_create(lv_coord_t hor_res, lv_coord_t ver_res)
     lv_disp_set_draw_buffers(disp, buf, NULL,
                              32 * 1024, LV_DISP_RENDER_MODE_PARTIAL);
 #else
-    lv_disp_set_draw_buffers(disp, dsc->fb, NULL,
+    lv_disp_set_draw_buffers(disp, dsc->fb, dsc->fb2,
                              lv_disp_get_hor_res(disp) * lv_disp_get_hor_res(disp) * sizeof(lv_color_t), LV_DISP_RENDER_MODE_DIRECT);
 #endif
     lv_disp_add_event(disp, res_chg_event_cb, LV_EVENT_RESOLUTION_CHANGED, NULL);
@@ -268,6 +269,7 @@ static void window_create(lv_disp_t * disp)
     dsc->renderer = SDL_CreateRenderer(dsc->window, -1, SDL_RENDERER_SOFTWARE);
     texture_resize(disp);
     lv_memset(dsc->fb, 0xff, hor_res * ver_res * sizeof(lv_color_t));
+    lv_memset(dsc->fb2, 0xff, hor_res * ver_res * sizeof(lv_color_t));
     /*Some platforms (e.g. Emscripten) seem to require setting the size again */
     SDL_SetWindowSize(dsc->window, hor_res * dsc->zoom, ver_res * dsc->zoom);
     texture_resize(disp);
@@ -279,6 +281,7 @@ static void window_update(lv_disp_t * disp)
     lv_coord_t hor_res = lv_disp_get_hor_res(disp);
 
     SDL_UpdateTexture(dsc->texture, NULL, dsc->fb, hor_res * sizeof(lv_color_t));
+    SDL_UpdateTexture(dsc->texture, NULL, dsc->fb2, hor_res * sizeof(lv_color_t));
     SDL_RenderClear(dsc->renderer);
 
     /*Update the renderer with the texture containing the rendered image*/
@@ -293,9 +296,10 @@ static void texture_resize(lv_disp_t * disp)
     lv_sdl_window_t * dsc = lv_disp_get_driver_data(disp);
 
     dsc->fb = (lv_color_t *)realloc(dsc->fb, sizeof(lv_color_t) * hor_res * ver_res);
+    dsc->fb2 = (lv_color_t *)realloc(dsc->fb2, sizeof(lv_color_t) * hor_res * ver_res);
 
 #if LV_SDL_PARTIAL_MODE == 0
-    lv_disp_set_draw_buffers(disp, dsc->fb, NULL, hor_res * ver_res * sizeof(lv_color_t), LV_DISP_RENDER_MODE_DIRECT);
+    lv_disp_set_draw_buffers(disp, dsc->fb, dsc->fb2, hor_res * ver_res * sizeof(lv_color_t), LV_DISP_RENDER_MODE_DIRECT);
 #endif
     if(dsc->texture) SDL_DestroyTexture(dsc->texture);
 

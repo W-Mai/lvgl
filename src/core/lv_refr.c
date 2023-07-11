@@ -311,7 +311,7 @@ void _lv_disp_refr_timer(lv_timer_t * tmr)
                            ? disp_refr->draw_buf_2
                            : disp_refr->draw_buf_1;
 
-    lv_coord_t stride = lv_disp_get_hor_res(disp_refr);
+    uint32_t stride = lv_align_up(disp_refr->hor_res, lv_disp_get_buf_stride_align(disp_refr));
     uint32_t i;
     for(i = 0; i < disp_refr->inv_p; i++) {
         if(disp_refr->inv_area_joined[i]) continue;

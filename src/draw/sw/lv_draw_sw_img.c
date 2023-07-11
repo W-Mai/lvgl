@@ -145,14 +145,15 @@ LV_ATTRIBUTE_FAST_MEM void lv_draw_sw_img_decoded(struct _lv_draw_ctx_t * draw_c
         while(blend_area.y1 <= y_last) {
             /*Apply transformations if any or separate the channels*/
             lv_area_t transform_area;
+            uint32_t stride = sup->w_stride;
             lv_area_copy(&transform_area, &blend_area);
             lv_area_move(&transform_area, -coords->x1, -coords->y1);
             if(transform) {
-                lv_draw_transform(draw_ctx, &transform_area, src_buf, src_w, src_h, src_w,
+                lv_draw_transform(draw_ctx, &transform_area, src_buf, src_w, src_h, stride,
                                   draw_dsc, sup, cf, rgb_buf, mask_buf);
             }
             else {
-                convert_cb(&transform_area, src_buf, src_w, src_h, src_w, sup, cf, rgb_buf, mask_buf);
+                convert_cb(&transform_area, src_buf, src_w, src_h, stride, sup, cf, rgb_buf, mask_buf);
             }
 
             /*Apply recolor*/

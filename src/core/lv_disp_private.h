@@ -71,6 +71,9 @@ struct _lv_disp_t {
     /** In byte count*/
     uint32_t draw_buf_size;
 
+    /** buf_stride in pixel count*/
+    uint32_t stride_align;
+
     /** MANDATORY: Write the internal buffer (draw_buf) to the display. 'lv_disp_flush_ready()' has to be
      * called when finished*/
     lv_disp_flush_cb_t flush_cb;

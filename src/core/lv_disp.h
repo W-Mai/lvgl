@@ -284,6 +284,20 @@ void lv_disp_set_antialiasing(lv_disp_t * disp, bool en);
 bool lv_disp_get_antialiasing(lv_disp_t * disp);
 
 
+/**
+ * Set the buffer stride
+ * @param disp      pointer to a display
+ * @param stride    the new stride
+ */
+void lv_disp_set_buf_stride_align(lv_disp_t * disp, lv_coord_t stride);
+
+/**
+ * Get the current buffer of a display
+ * @param disp      pointer to a display
+ * @return          current buffer stride
+ */
+uint32_t lv_disp_get_buf_stride_align(lv_disp_t * disp);
+
 //! @cond Doxygen_Suppress
 
 /**

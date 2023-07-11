@@ -63,6 +63,7 @@ void lv_draw_sw_init_ctx(lv_disp_t * disp, lv_draw_ctx_t * draw_ctx)
     draw_sw_ctx->base_draw.layer_destroy = lv_draw_sw_layer_destroy;
     draw_sw_ctx->blend = lv_draw_sw_blend_basic;
     draw_ctx->layer_instance_size = sizeof(lv_draw_sw_layer_ctx_t);
+    draw_ctx->stride_align = lv_disp_get_buf_stride_align(disp);
 }
 
 void lv_draw_sw_deinit_ctx(lv_disp_t * disp, lv_draw_ctx_t * draw_ctx)
