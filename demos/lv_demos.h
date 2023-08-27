@@ -51,6 +51,10 @@ extern "C" {
 #include "multilang/lv_demo_multilang.h"
 #endif
 
+#if LV_USE_DEMO_FLUID_SIM
+#include "fluid_sim/lv_demo_fluid_sim.h"
+#endif
+
 /*********************
  *      DEFINES
  *********************/
