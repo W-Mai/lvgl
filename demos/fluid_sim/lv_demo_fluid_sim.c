@@ -6,6 +6,7 @@
  *      INCLUDES
  *********************/
 #include "lv_demo_fluid_sim.h"
+#include "math.h"
 
 #if LV_USE_DEMO_FLUID_SIM
 
@@ -42,6 +43,7 @@ typedef struct {
  **********************/
 static void canvas_update_timer(lv_timer_t* timer);
 static void fluid_sim_init(fluid_sim_t* fluid_sim, uint32_t num_x, uint32_t num_y, double density);
+int init();
 /**********************
  *  STATIC VARIABLES
  **********************/
@@ -61,8 +63,8 @@ void lv_demo_fluid_sim(void)
 
     lv_canvas_set_buffer(canvas, buf, 320, 240, LV_COLOR_FORMAT_NATIVE_WITH_ALPHA);
 
-    fluid_sim_init(&g_fluid_sim, 322, 242, 1000);
-
+    //    fluid_sim_init(&g_fluid_sim, 322, 242, 1000);
+    init();
     lv_timer_create(canvas_update_timer, 10, canvas);
 }
 
@@ -138,200 +140,213 @@ static void fluid_sim_destroy(fluid_sim_t* fluid_sim)
     buf_destroy(&fluid_sim->new_m);
 }
 
-static void integrate(fluid_sim_t* fluid_sim, double dt, double gravity)
+#define CONSOLE_WIDTH 160
+#define CONSOLE_HEIGHT 160
+
+int xSandboxAreaScan = 0, ySandboxAreaScan = 0;
+
+struct Particle {
+    double xPos;
+    double yPos;
+    double density;
+    int wallflag;
+    double xForce;
+    double yForce;
+    double xVelocity;
+    double yVelocity;
+} particles[CONSOLE_WIDTH * CONSOLE_HEIGHT * 2];
+
+double xParticleDistance, yParticleDistance;
+double particlesInteraction;
+double particlesDistance;
+
+int x, y, screenBufferIndex, totalOfParticles;
+int gravity = 1, pressure = 4, viscosity = 1;
+
+char screenBuffer[CONSOLE_WIDTH * CONSOLE_HEIGHT + 1];
+
+const char* buffer_map = "\n"
+                         "\n"
+                         "\n"
+                         "            ###.......................###\n"
+                         "            ###.......................###\n"
+                         "            ###.......................###\n"
+                         "            ###.......................###\n"
+                         "            ###.......................###\n"
+                         "            ###.......................###\n"
+                         "            ###.......................###\n"
+                         "            ###.......................###\n"
+                         "            ###                       ###\n"
+                         "            ###                       ###\n"
+                         "            ###                       ###\n"
+                         "            ###                       ###\n"
+                         "            ###                       ###\n"
+                         "            ###                       ###\n"
+                         "            ###                       ###\n"
+                         "            ###                       ###\n"
+                         "            ###                       ###\n"
+                         "            #############################\n"
+                         "            #############################";
+
+int init()
 {
-    uint32_t n = fluid_sim->num_y;
-    for (uint32_t i = 1; i < fluid_sim->num_x; i++) {
-        for (uint32_t j = 1; j < fluid_sim->num_y - 1; j++) {
-            if (buf_get_double(&fluid_sim->s, i, j) != 0.0 && buf_get_double(&fluid_sim->s, i, j - 1) != 0.0) {
-                buf_set_double(&fluid_sim->v, i, j, buf_get_double(&fluid_sim->v, i, j) + gravity * dt);
+
+    // read the input file to initialise the particles.
+    // # stands for "wall", i.e. unmovable particles (very high density)
+    // any other non-space character represents normal particles.
+//    int particlesCounter = 0;
+//    int buf_i = 0;
+//    while ((x = buffer_map[buf_i++]) != '\0') {
+//
+//        switch (x) {
+//        case '\n':
+//            // next row
+//            // rewind the x to -1 cause it's gonna be incremented at the
+//            // end of the while body
+//            ySandboxAreaScan += 2;
+//            xSandboxAreaScan = -1;
+//            break;
+//        case ' ':
+//            break;
+//        case '#':
+//            // The character # represents “wall particle” (a particle with fixed position),
+//            // and any other non-space characters represent free particles.
+//            // A wall sets the flag on 2 particles side by side.
+//            particles[particlesCounter].wallflag = particles[particlesCounter + 1].wallflag = 1;
+//        default:
+//
+//            particles[particlesCounter].xPos = xSandboxAreaScan;
+//            particles[particlesCounter].yPos = ySandboxAreaScan;
+//
+//            particles[particlesCounter + 1].xPos = xSandboxAreaScan;
+//            particles[particlesCounter + 1].yPos = ySandboxAreaScan + 1;
+//
+//            totalOfParticles = particlesCounter += 2;
+//        }
+//        xSandboxAreaScan += 1;
+//    }
+    for (int i = 0; i < CONSOLE_WIDTH; ++i) {
+        for (int j = 0; j < CONSOLE_HEIGHT; ++j) {
+            if ( 10 < i && i < CONSOLE_WIDTH - 10 && 10 < j && j < 20) {
+                particles[totalOfParticles].xPos = i;
+                particles[totalOfParticles].yPos = j;
+                particles[totalOfParticles].wallflag = 0;
+                totalOfParticles++;
+            } else if ( 0 <= i && i <= CONSOLE_HEIGHT && CONSOLE_HEIGHT - 10 <= j && j < CONSOLE_HEIGHT) {
+                particles[totalOfParticles].xPos = i;
+                particles[totalOfParticles].yPos = j;
+                particles[totalOfParticles].wallflag = 1;
+                totalOfParticles++;
+            }
+
+
+        }
+    }
+
+    return 0;
+}
+
+void simulate()
+{
+
+    int particlesCursor, particlesCursor2;
+
+    // Iterate over every pair of particles to calculate the densities
+    for (particlesCursor = 0; particlesCursor < totalOfParticles; particlesCursor++) {
+        // density of "wall" particles is high, other particles will bounce off them.
+        particles[particlesCursor].density = particles[particlesCursor].wallflag * 9;
+
+        for (particlesCursor2 = 0; particlesCursor2 < totalOfParticles; particlesCursor2++) {
+
+            xParticleDistance = particles[particlesCursor].xPos - particles[particlesCursor2].xPos;
+            yParticleDistance = particles[particlesCursor].yPos - particles[particlesCursor2].yPos;
+            particlesDistance = sqrt(pow(xParticleDistance, 2.0) + pow(yParticleDistance, 2.0));
+            particlesInteraction = particlesDistance / 2.0 - 1.0;
+
+            if (floor(1.0 - particlesInteraction) > 0) {
+                particles[particlesCursor].density += particlesInteraction * particlesInteraction;
             }
         }
     }
-}
 
-static void solve_incompressibility(fluid_sim_t* fluid_sim, uint32_t num_iters, double dt)
-{
-    uint32_t n = fluid_sim->num_y;
-    double cp = fluid_sim->density * fluid_sim->h / dt;
+    // Iterate over every pair of particles to calculate the forces
+    for (particlesCursor = 0; particlesCursor < totalOfParticles; particlesCursor++) {
+        particles[particlesCursor].yForce = gravity;
+        particles[particlesCursor].xForce = 0;
 
-    for (uint32_t iter = 0; iter < num_iters; iter++) {
-        for (uint32_t i = 1; i < fluid_sim->num_x - 1; i++) {
-            for (uint32_t j = 1; j < fluid_sim->num_y - 1; j++) {
-                if (buf_get_double(&fluid_sim->s, i, j) == 0.0) {
-                    continue;
-                }
-                double s = buf_get_double(&fluid_sim->s, i, j);
-                double sx0 = buf_get_double(&fluid_sim->s, i - 1, j);
-                double sx1 = buf_get_double(&fluid_sim->s, i + 1, j);
-                double sy0 = buf_get_double(&fluid_sim->s, i, j - 1);
-                double sy1 = buf_get_double(&fluid_sim->s, i, j + 1);
-                s = sx0 + sx1 + sy0 + sy1;
-                if (s == 0.0) {
-                    continue;
-                }
-                double div = buf_get_double(&fluid_sim->u, i + 1, j) - buf_get_double(&fluid_sim->u, i, j) + buf_get_double(&fluid_sim->v, i, j + 1) - buf_get_double(&fluid_sim->v, i, j);
-                double p = -div / s;
-                p *= 1.0;
-                buf_set_double(&fluid_sim->p, i, j, buf_get_double(&fluid_sim->p, i, j) + cp * p);
-                buf_set_double(&fluid_sim->u, i, j, buf_get_double(&fluid_sim->u, i, j) - sx0 * p);
-                buf_set_double(&fluid_sim->u, i + 1, j, buf_get_double(&fluid_sim->u, i + 1, j) + sx1 * p);
-                buf_set_double(&fluid_sim->v, i, j, buf_get_double(&fluid_sim->v, i, j) - sy0 * p);
-                buf_set_double(&fluid_sim->v, i, j + 1, buf_get_double(&fluid_sim->v, i, j + 1) + sy1 * p);
+        for (particlesCursor2 = 0; particlesCursor2 < totalOfParticles; particlesCursor2++) {
+
+            xParticleDistance = particles[particlesCursor].xPos - particles[particlesCursor2].xPos;
+            yParticleDistance = particles[particlesCursor].yPos - particles[particlesCursor2].yPos;
+            particlesDistance = sqrt(pow(xParticleDistance, 2.0) + pow(yParticleDistance, 2.0));
+            particlesInteraction = particlesDistance / 2.0 - 1.0;
+
+            // force is updated only if particles are close enough
+            if (floor(1.0 - particlesInteraction) > 0) {
+                particles[particlesCursor].xForce += particlesInteraction * (xParticleDistance * (3 - particles[particlesCursor].density - particles[particlesCursor2].density) * pressure + particles[particlesCursor].xVelocity * viscosity - particles[particlesCursor2].xVelocity * viscosity) / particles[particlesCursor].density;
+                particles[particlesCursor].yForce += particlesInteraction * (yParticleDistance * (3 - particles[particlesCursor].density - particles[particlesCursor2].density) * pressure + particles[particlesCursor].yVelocity * viscosity - particles[particlesCursor2].yVelocity * viscosity) / particles[particlesCursor].density;
             }
         }
     }
-}
 
-static void extrapolate(fluid_sim_t* fluid_sim)
-{
-    uint32_t n = fluid_sim->num_y;
-    for (uint32_t i = 0; i < fluid_sim->num_x; i++) {
-        buf_set_double(&fluid_sim->u, i, 0, buf_get_double(&fluid_sim->u, i, 1));
-        buf_set_double(&fluid_sim->u, i, fluid_sim->num_y - 1, buf_get_double(&fluid_sim->u, i, fluid_sim->num_y - 2));
+    // empty the buffer
+    for (screenBufferIndex = 0; screenBufferIndex < CONSOLE_WIDTH * CONSOLE_HEIGHT; screenBufferIndex++) {
+        screenBuffer[screenBufferIndex] = 0;
     }
-    for (uint32_t j = 0; j < fluid_sim->num_y; j++) {
-        buf_set_double(&fluid_sim->v, 0, j, buf_get_double(&fluid_sim->v, 1, j));
-        buf_set_double(&fluid_sim->v, fluid_sim->num_x - 1, j, buf_get_double(&fluid_sim->v, fluid_sim->num_x - 2, j));
-    }
-}
 
-static double sample_field(fluid_sim_t* fluid_sim, double x, double y, buf_t* field)
-{
-    uint32_t n = fluid_sim->num_y;
-    double h = fluid_sim->h;
-    double h1 = 1.0 / h;
-    double h2 = 0.5 * h;
-
-    x = LV_MAX(LV_MIN(x, fluid_sim->num_x * h), h);
-    y = LV_MAX(LV_MIN(y, fluid_sim->num_y * h), h);
-
-    double dx = 0.0;
-    double dy = 0.0;
-
-    double* f;
-
-    f = (double*)field->buf;
-    dy = h2;
-
-    uint32_t x0 = LV_MIN((uint32_t)((x - dx) * h1), fluid_sim->num_x - 1);
-    double tx = ((x - dx) - x0 * h) * h1;
-    uint32_t x1 = LV_MIN(x0 + 1, fluid_sim->num_x - 1);
-
-    uint32_t y0 = LV_MIN((uint32_t)((y - dy) * h1), fluid_sim->num_y - 1);
-    double ty = ((y - dy) - y0 * h) * h1;
-    uint32_t y1 = LV_MIN(y0 + 1, fluid_sim->num_y - 1);
-
-    double sx = 1.0 - tx;
-    double sy = 1.0 - ty;
-
-    double val = sx * sy * f[x0 * n + y0] + tx * sy * f[x1 * n + y0] + tx * ty * f[x1 * n + y1] + sx * ty * f[x0 * n + y1];
-
-    return val;
-}
-
-static double avg_u(fluid_sim_t* fluid_sim, uint32_t i, uint32_t j)
-{
-    uint32_t n = fluid_sim->num_y;
-    double u = (buf_get_double(&fluid_sim->u, i, j - 1) + buf_get_double(&fluid_sim->u, i, j) + buf_get_double(&fluid_sim->u, (i + 1), j - 1) + buf_get_double(&fluid_sim->u, (i + 1), j)) * 0.25;
-    return u;
-}
-
-static double avg_v(fluid_sim_t* fluid_sim, uint32_t i, uint32_t j)
-{
-    uint32_t n = fluid_sim->num_y;
-    double v = (buf_get_double(&fluid_sim->v, (i - 1), j) + buf_get_double(&fluid_sim->v, i, j) + buf_get_double(&fluid_sim->v, (i - 1), j + 1) + buf_get_double(&fluid_sim->v, i, j + 1)) * 0.25;
-    return v;
-}
-
-static void advect(fluid_sim_t* fluid_sim, double dt)
-{
-    uint32_t n = fluid_sim->num_y;
-    double h = fluid_sim->h;
-    double h2 = 0.5 * h;
-
-    for (uint32_t i = 1; i < fluid_sim->num_x; i++) {
-        for (uint32_t j = 1; j < fluid_sim->num_y; j++) {
-            if (buf_get_double(&fluid_sim->s, i, j) != 0.0 && buf_get_double(&fluid_sim->s, i - 1, j) != 0.0 && j < fluid_sim->num_y - 1) {
-                double x = i * h;
-                double y = j * h + h2;
-                double u = buf_get_double(&fluid_sim->u, i, j);
-                double v = avg_v(fluid_sim, i, j);
-                x = x - dt * u;
-                y = y - dt * v;
-                u = sample_field(fluid_sim, x, y, &fluid_sim->u);
-                buf_set_double(&fluid_sim->new_u, i, j, u);
+    for (particlesCursor = 0; particlesCursor < totalOfParticles; particlesCursor++) {
+        if (!particles[particlesCursor].wallflag) {
+            if (sqrt(pow(particles[particlesCursor].xForce, 2.0) + pow(particles[particlesCursor].yForce, 2.0)) < 4.2) {
+                particles[particlesCursor].xVelocity += particles[particlesCursor].xForce / 10;
+                particles[particlesCursor].yVelocity += particles[particlesCursor].yForce / 10;
+            } else {
+                particles[particlesCursor].xVelocity += particles[particlesCursor].xForce / 11;
+                particles[particlesCursor].yVelocity += particles[particlesCursor].yForce / 11;
             }
-            if (buf_get_double(&fluid_sim->s, i, j) != 0.0 && buf_get_double(&fluid_sim->s, i, j - 1) != 0.0 && i < fluid_sim->num_x - 1) {
-                double x = i * h + h2;
-                double y = j * h;
-                double u = avg_u(fluid_sim, i, j);
-                double v = buf_get_double(&fluid_sim->v, i, j);
-                x = x - dt * u;
-                y = y - dt * v;
-                v = sample_field(fluid_sim, x, y, &fluid_sim->v);
-                buf_set_double(&fluid_sim->new_v, i, j, v);
-            }
+
+            particles[particlesCursor].xPos += particles[particlesCursor].xVelocity;
+            particles[particlesCursor].yPos += particles[particlesCursor].yVelocity;
+        }
+        x = particles[particlesCursor].xPos;
+        y = particles[particlesCursor].yPos / 2;
+        screenBufferIndex = x + CONSOLE_WIDTH * y;
+
+        if (y >= 0 && y < CONSOLE_HEIGHT - 1 && x >= 0 && x < CONSOLE_WIDTH - 1) {
+            screenBuffer[screenBufferIndex] |= 8; // set 4th bit to 1
+            screenBuffer[screenBufferIndex + 1] |= 4; // set 3rd bit to 1
+            // now the cell in row below
+            screenBuffer[screenBufferIndex + CONSOLE_WIDTH] |= 2; // set 2nd bit to 1
+            screenBuffer[screenBufferIndex + CONSOLE_WIDTH + 1] |= 1; // set 1st bit to 1
         }
     }
-    buf_t tmp = fluid_sim->u;
-    fluid_sim->u = fluid_sim->new_u;
-    fluid_sim->new_u = tmp;
-    tmp = fluid_sim->v;
-    fluid_sim->v = fluid_sim->new_v;
-    fluid_sim->new_v = tmp;
-}
 
-static void advect_smoke(fluid_sim_t* fluid_sim, double dt)
-{
-    uint32_t n = fluid_sim->num_y;
-    double h = fluid_sim->h;
-    double h2 = 0.5 * h;
+    for (screenBufferIndex = 0; screenBufferIndex < CONSOLE_WIDTH * CONSOLE_HEIGHT; screenBufferIndex++) {
+        if (screenBufferIndex % CONSOLE_WIDTH == CONSOLE_WIDTH - 1)
+            screenBuffer[screenBufferIndex] = '\n';
+        else {
 
-    for (uint32_t i = 1; i < fluid_sim->num_x - 1; i++) {
-        for (uint32_t j = 1; j < fluid_sim->num_y - 1; j++) {
-            if (buf_get_double(&fluid_sim->s, i, j) != 0.0) {
-                double u = (buf_get_double(&fluid_sim->u, i, j) + buf_get_double(&fluid_sim->u, i + 1, j)) * 0.5;
-                double v = (buf_get_double(&fluid_sim->v, i, j) + buf_get_double(&fluid_sim->v, i, j + 1)) * 0.5;
-                double x = i * h + h2 - dt * u;
-                double y = j * h + h2 - dt * v;
-
-                buf_set_double(&fluid_sim->new_m, i, j, sample_field(fluid_sim, x, y, &fluid_sim->s));
-            }
+            //            screenBuffer[screenBufferIndex] = " '`-.|//,\\|\\_\\/#"[screenBuffer[screenBufferIndex]];
         }
     }
-    buf_t tmp = fluid_sim->m;
-    fluid_sim->m = fluid_sim->new_m;
-    fluid_sim->new_m = tmp;
-}
-
-static void simulate(fluid_sim_t* fluid_sim, double dt, double gravity, uint32_t num_iters)
-{
-    integrate(fluid_sim, dt, gravity);
-    buf_fill_double(&fluid_sim->p, 0.0);
-    solve_incompressibility(fluid_sim, num_iters, dt);
-    extrapolate(fluid_sim);
-    advect(fluid_sim, dt);
-    advect_smoke(fluid_sim, dt);
 }
 
 static void canvas_update_timer(lv_timer_t* timer)
 {
     lv_obj_t* canvas = lv_timer_get_user_data(timer);
 
-    uint32_t w = lv_obj_get_width(canvas);
-    uint32_t h = lv_obj_get_height(canvas);
+    uint32_t w = CONSOLE_WIDTH;
+    uint32_t h = CONSOLE_HEIGHT;
 
-    double dt = 0.1;
-    double gravity = -9.8;
-    uint32_t num_iters = 10;
+    simulate();
 
-    simulate(&g_fluid_sim, dt, gravity, num_iters);
-
-    for (uint32_t i = 0; i < w; ++i) {
-        for (uint32_t j = 0; j < h; ++j) {
-            double m = buf_get_double(&g_fluid_sim.p, i, j);
-            lv_canvas_set_px(canvas, i, j, lv_color_make(128, 0, 0), 255-m * 255);
+    for (uint32_t i = 0; i < h; ++i) {
+        for (uint32_t j = 0; j < w; ++j) {
+            char m = screenBuffer[i * w + j];
+            if (m == 15) {
+                lv_canvas_set_px(canvas, j, i, lv_color_make(0, 0, 0), LV_OPA_100);
+            } else {
+                lv_canvas_set_px(canvas, j, i, lv_color_make(0, 0, 0), m);
+            }
         }
     }
 
