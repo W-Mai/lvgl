@@ -156,6 +156,8 @@ typedef struct _lv_global_t {
     lv_fs_drv_t win32_fs_drv;
 #endif
 
+    lv_cache_t * font_cache;
+
 #if LV_USE_FREETYPE
     struct _lv_freetype_context_t * ft_context;
 #endif

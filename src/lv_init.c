@@ -284,6 +284,8 @@ void lv_init(void)
     lv_ffmpeg_init();
 #endif
 
+    lv_font_cache_init();
+
 #if LV_USE_FREETYPE
     /*Init freetype library*/
 #  if LV_FREETYPE_CACHE_SIZE >= 0
@@ -337,6 +339,8 @@ void lv_deinit(void)
 #if LV_USE_TINY_TTF
     lv_tiny_ttf_deinit();
 #endif
+
+    lv_font_cache_deinit();
 
 #if LV_USE_THEME_DEFAULT
     lv_theme_default_deinit();
