@@ -78,6 +78,12 @@ static const uint16_t font_style[] = {
 static lv_obj_t * label_create(const char * font_name, lv_obj_t * par, int size, int x, int y)
 {
     uint32_t index = lv_rand(0, sizeof(font_style) / sizeof(uint16_t) - 1);
+    uint32_t r = lv_rand(0, 0xFF);
+    uint32_t g = lv_rand(0, 0xFF);
+    uint32_t b = lv_rand(0, 0xFF);
+    lv_opa_t opa = lv_rand(0, LV_OPA_COVER);
+    lv_color_t color = lv_color_make(r, g, b);
+
     lv_font_t * font = lv_freetype_font_create(font_name, LV_FREETYPE_FONT_RENDER_MODE_BITMAP, size, font_style[index]);
     if(!font) {
         return NULL;
@@ -85,9 +91,6 @@ static lv_obj_t * label_create(const char * font_name, lv_obj_t * par, int size,
 
     lv_obj_t * label = lv_label_create(par);
     lv_obj_set_style_text_font(label, font, 0);
-    /*generate random color and opa*/
-    lv_color_t color = lv_color_make(lv_rand(0, 0xFF), lv_rand(0, 0xFF), lv_rand(0, 0xFF));
-    lv_opa_t opa = lv_rand(0, LV_OPA_COVER);
     lv_obj_set_style_text_opa(label, opa, 0);
     lv_obj_set_style_text_color(label, color, 0);
     lv_obj_set_pos(label, x, y);
@@ -98,6 +101,8 @@ static lv_obj_t * label_create(const char * font_name, lv_obj_t * par, int size,
     lv_random_utf8_chars(str, sizeof(str), LV_RND_UNICODE_ALPHANUM_AND_CJK_TABLE, LV_RND_UNICODE_ALPHANUM_AND_CJK_TABLE_LEN,
                          MAX_LABEL_CONTENT_LEN);
     lv_label_set_text(label, (char *)str);
+    TEST_PRINTF("font_name: %s, size: %d, color: (%d, %d, %d), opa: %d, text %s\n", font_name, size, color.red, color.green,
+                color.blue, opa, str);
     return label;
 }
 static void label_delete(lv_obj_t * label)
@@ -121,21 +126,25 @@ static void update_cb(void)
 {
     stress_test_ctx_t * ctx = &g_ctx;
     uint32_t label_index = lv_rand(0, ctx->config.label_cnt - 1);
+    uint32_t font_index = lv_rand(0, ctx->config.font_cnt - 1);
+    uint32_t font_size = lv_rand(0, MAX_FONT_SIZE);
+    uint32_t label_x = lv_rand(0, LV_HOR_RES) - LV_HOR_RES / 2;
+    uint32_t label_y = lv_rand(0, LV_VER_RES);
+
     lv_obj_t * label = ctx->label_arr[label_index];
     if(label) {
         label_delete(label);
         ctx->label_arr[label_index] = NULL;
     }
     else {
-        uint32_t font_index = lv_rand(0, ctx->config.font_cnt - 1);
         const char * pathname = ctx->config.font_name_arr[font_index];
         LV_ASSERT_NULL(pathname);
         label = label_create(
                     pathname,
                     ctx->par,
-                    (int)lv_rand(0, MAX_FONT_SIZE),
-                    (int)lv_rand(0, LV_HOR_RES) - LV_HOR_RES / 2,
-                    (int)lv_rand(0, LV_VER_RES));
+                    (int)font_size,
+                    (int)label_x,
+                    (int)label_y);
         ctx->label_arr[label_index] = label;
     }
 }
@@ -172,6 +181,8 @@ void test_font_stress(void)
     for(uint32_t i = 0; g_ctx.config.loop_cnt > 0; g_ctx.config.loop_cnt--) {
         update_cb();
         lv_refr_now(NULL);
+
+        TEST_PRINTF("SEED: %x, LOOP: %u\n", (&lv_global)->math_rand_seed, g_ctx.config.loop_cnt);
 
         if(g_ctx.config.loop_cnt % CAPTURE_SKIP_FRAMES == 0) {
             char buf[64];
