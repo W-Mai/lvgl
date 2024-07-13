@@ -32,6 +32,9 @@ struct lv_span_t {
     lv_obj_t * spangroup;   /* a pointer to spangroup */
     lv_style_t style;       /* display text style */
     uint32_t static_flag : 1;/* the text is static flag */
+
+    lv_point_t trailing_pos;
+    int32_t trailing_height;
 };
 
 /** Data of label*/
@@ -45,6 +48,7 @@ struct lv_spangroup_t {
     uint32_t mode : 2;       /* details see lv_span_mode_t */
     uint32_t overflow : 1;   /* details see lv_span_overflow_t */
     uint32_t refresh : 1;    /* the spangroup need refresh cache_w and cache_h */
+    lv_array_t event_spans;
 };
 
 
