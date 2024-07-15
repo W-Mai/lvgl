@@ -244,6 +244,17 @@ int32_t lv_spangroup_get_expand_height(lv_obj_t * obj, int32_t width);
  */
 lv_span_coords_t lv_spangroup_get_span_coords(lv_obj_t * obj, lv_span_t * span);
 
+/**
+ * Add an event callback to a span.
+ * @param obj       pointer to a spangroup object.
+ * @param span      pointer to a span.
+ * @param cb        the callback function.
+ * @param code      the event code.
+ * @param user_data user data for the callback.
+ */
+void lv_spangroup_add_span_event_cb(lv_obj_t * obj, lv_span_t * span, lv_event_cb_t cb, lv_event_code_t code,
+                                    void * user_data);
+
 /*=====================
  * Other functions
  *====================*/
