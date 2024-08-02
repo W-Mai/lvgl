@@ -107,6 +107,8 @@ typedef lv_cache_entry_t * (*lv_cache_get_victim_cb)(lv_cache_t * cache, void * 
 typedef lv_cache_reserve_cond_res_t (*lv_cache_reserve_cond_cb)(lv_cache_t * cache, const void * key, size_t size,
                                                                 void * user_data);
 
+typedef lv_iter_t * (*lv_cache_iter_create_cb)(lv_cache_t * cache);
+
 /**
  * The cache operations struct
  */
@@ -150,9 +152,11 @@ struct _lv_cache_class_t {
     lv_cache_add_cb_t add_cb;                     /**< The add function for cache entries */
     lv_cache_remove_cb_t remove_cb;               /**< The remove function for cache entries */
     lv_cache_drop_cb_t drop_cb;                   /**< The drop function for cache entries */
-    lv_cache_drop_all_cb_t drop_all_cb;              /**< The drop all function for cache entries */
+    lv_cache_drop_all_cb_t drop_all_cb;           /**< The drop all function for cache entries */
     lv_cache_get_victim_cb get_victim_cb;         /**< The get victim function for cache entries */
     lv_cache_reserve_cond_cb reserve_cond_cb;     /**< The reserve condition function for cache entries */
+
+    lv_cache_iter_create_cb iter_create_cb;       /**< The iterator creation function for cache entries */
 };
 
 /*-----------------
