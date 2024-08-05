@@ -19,6 +19,8 @@
 #include "../../core/lv_observer_private.h"
 #include "../../misc/lv_text_ap.h"
 #include "../../core/lv_global.h"
+#include "../../misc/lv_text_line_process.h"
+#include "../../misc/lv_iter.h"
 
 /*********************
  *      DEFINES
@@ -912,7 +914,19 @@ static bool lv_text_get_snippet(const char * txt, const lv_font_t * font,
     attributes.max_width = real_max_width;
     attributes.text_flags = flag;
 
+#if LV_USE_TEXTFLOW == 0
     uint32_t ofs = lv_text_get_next_line(txt, LV_TEXT_LEN_MAX, font, use_width, &attributes);
+#else
+    LV_UNUSED(flag);
+
+    lv_text_line_process_line_info_t line_info;
+    lv_iter_t * iter = lv_text_line_process_iter_create(txt, font, real_max_width, letter_space, 0, true);
+    lv_iter_next(iter, &line_info);
+    lv_text_line_process_iter_destroy(iter);
+
+    uint32_t ofs = line_info.pos.brk;
+    *use_width = line_info.real_width;
+#endif
     *end_ofs = ofs;
 
     if(txt[ofs] == '\0' && *use_width <= attributes.max_width && !(ofs && (txt[ofs - 1] == '\n' || txt[ofs - 1] == '\r'))) {

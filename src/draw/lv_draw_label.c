@@ -21,6 +21,11 @@
 #include "../stdlib/lv_string.h"
 #include "../core/lv_global.h"
 
+#if LV_USE_TEXTFLOW != 0
+    #include "../misc/lv_iter.h"
+    #include "../misc/lv_text_line_process.h"
+#endif
+
 /*********************
  *      DEFINES
  *********************/
@@ -252,7 +257,8 @@ void lv_draw_label_iterate_characters(lv_draw_task_t * t, const lv_draw_label_ds
     y_ofs = dsc->ofs_y;
     pos.y += y_ofs;
 
-    uint32_t line_start     = 0;
+    uint32_t real_line_start = 0;  /* Used for `dsc->text` */
+    uint32_t line_start      = 0;  /* Used for the relative line pos in one process */
     int32_t last_line_start = -1;
 
     /*Check the hint to use the cached info*/
@@ -266,9 +272,11 @@ void lv_draw_label_iterate_characters(lv_draw_task_t * t, const lv_draw_label_ds
 
     /*Use the hint if it's valid*/
     if(dsc->hint && last_line_start >= 0) {
-        line_start = last_line_start;
+        real_line_start = last_line_start;
         pos.y += dsc->hint->y;
     }
+
+    if(last_line_start < 0) last_line_start = 0;
 
     uint32_t remaining_len = dsc->text_length;
     lv_text_attributes_t attributes = {0};
@@ -276,35 +284,63 @@ void lv_draw_label_iterate_characters(lv_draw_task_t * t, const lv_draw_label_ds
     attributes.text_flags = dsc->flag;
     attributes.max_width = w;
 
-    uint32_t line_end = line_start + lv_text_get_next_line(&dsc->text[line_start], remaining_len, font, NULL, &attributes);
+#if LV_USE_TEXTFLOW == 0
+    uint32_t line_end = real_line_start + lv_text_get_next_line(&dsc->text[real_line_start], remaining_len, font,
+                                                                NULL,
+                                                                &attributes);
+#else
+    lv_text_line_process_line_info_t line_info;
+    lv_iter_t * line_iter = lv_text_line_process_iter_create(&dsc->text[real_line_start], font, w, dsc->letter_space, 0,
+                                                             true);
+    uint32_t line_end = 0;
+#endif
 
     /*Go the first visible line*/
     while(pos.y + line_height_font < t->clip_area.y1) {
+#if LV_USE_TEXTFLOW == 0
         /*Go to next line*/
         remaining_len -= line_end - line_start;
         line_start = line_end;
-        line_end += lv_text_get_next_line(&dsc->text[line_start], remaining_len, font, NULL, &attributes);
+        real_line_start = line_start;
+        line_end += lv_text_get_next_line(&dsc->text[real_line_start], remaining_len, font,  NULL,
+                                          &attributes);
         pos.y += line_height;
+#else
+        if(!(remaining_len && lv_iter_next(line_iter, &line_info) == LV_RESULT_OK)) {
+            lv_text_line_process_iter_destroy(line_iter);
+            return;
+        }
+        line_start = line_info.pos.start;
+        real_line_start = last_line_start + line_start;
+        line_end = line_info.pos.brk;
+#endif
 
         /*Save at the threshold coordinate*/
         if(dsc->hint && pos.y >= -LV_LABEL_HINT_UPDATE_TH && dsc->hint->line_start < 0) {
-            dsc->hint->line_start = line_start;
+            dsc->hint->line_start = real_line_start;
             dsc->hint->y          = pos.y - coords->y1;
             dsc->hint->coord_y    = coords->y1;
         }
 
-        if(dsc->text[line_start] == '\0') return;
+#if LV_USE_TEXTFLOW == 0
+        if(dsc->text[real_line_start] == '\0') return;
+#else
+        pos.y += line_height;
+#endif
+        remaining_len -= line_end - line_start;
     }
 
     /*Align to middle*/
     if(align == LV_TEXT_ALIGN_CENTER) {
-        line_width = lv_text_get_width(&dsc->text[line_start], line_end - line_start, font, &attributes);
+        line_width = lv_text_get_width(&dsc->text[real_line_start], line_end - line_start, font,
+                                       &attributes);
         pos.x += (lv_area_get_width(coords) - line_width) / 2;
 
     }
     /*Align to the right*/
     else if(align == LV_TEXT_ALIGN_RIGHT) {
-        line_width = lv_text_get_width(&dsc->text[line_start], line_end - line_start, font, &attributes);
+        line_width = lv_text_get_width(&dsc->text[real_line_start], line_end - line_start, font,
+                                       &attributes);
         pos.x += lv_area_get_width(coords) - line_width;
     }
 
@@ -345,7 +381,30 @@ void lv_draw_label_iterate_characters(lv_draw_task_t * t, const lv_draw_label_ds
     uint8_t is_first_space_after_cmd = 0;
 
     /*Write out all lines*/
-    while(remaining_len && dsc->text[line_start] != '\0') {
+#if LV_USE_TEXTFLOW == 0
+    while(dsc->text[real_line_start] != '\0') {
+#else
+    while(remaining_len && lv_iter_next(line_iter, &line_info) == LV_RESULT_OK) {
+        line_start = line_info.pos.start;
+        line_end = line_info.pos.brk;
+        real_line_start = last_line_start + line_start;
+
+        pos.x = coords->x1;
+        /*Align to middle*/
+        if(align == LV_TEXT_ALIGN_CENTER) {
+            line_width =
+                lv_text_get_width(&dsc->text[real_line_start], line_end - line_start, font, &attributes);
+
+            pos.x += (lv_area_get_width(coords) - line_width) / 2;
+        }
+        /*Align to the right*/
+        else if(align == LV_TEXT_ALIGN_RIGHT) {
+            line_width =
+                lv_text_get_width(&dsc->text[real_line_start], line_end - line_start, font, &attributes);
+            pos.x += lv_area_get_width(coords) - line_width;
+        }
+#endif
+
         pos.x += x_ofs;
         line_start_x = pos.x;
 
@@ -363,10 +422,11 @@ void lv_draw_label_iterate_characters(lv_draw_task_t * t, const lv_draw_label_ds
             lv_memcpy(bidi_txt, &dsc->text[line_start], bidi_size);
         }
         else {
-            lv_bidi_process_paragraph(dsc->text + line_start, bidi_txt, bidi_size, base_dir, NULL, 0);
+            lv_bidi_process_paragraph(dsc->text + real_line_start, bidi_txt, bidi_size, base_dir, NULL,
+                                      0);
         }
 #else
-        const char * bidi_txt = dsc->text + line_start;
+        const char * bidi_txt = dsc->text + real_line_start;
 #endif
 
         while(next_char_offset < remaining_len && next_char_offset < line_end - line_start) {
@@ -379,12 +439,12 @@ void lv_draw_label_iterate_characters(lv_draw_task_t * t, const lv_draw_label_ds
                     logical_char_pos = lv_text_encoded_get_char_id(dsc->text, line_start + next_char_offset);
                 }
                 else {
-                    logical_char_pos = lv_text_encoded_get_char_id(dsc->text, line_start);
+                    logical_char_pos = lv_text_encoded_get_char_id(dsc->text, real_line_start);
                     uint32_t c_idx = lv_text_encoded_get_char_id(bidi_txt, next_char_offset);
                     logical_char_pos += lv_bidi_get_logical_pos(bidi_txt, NULL, line_end - line_start, base_dir, c_idx, NULL);
                 }
 #else
-                logical_char_pos = lv_text_encoded_get_char_id(dsc->text, line_start + next_char_offset);
+                logical_char_pos = lv_text_encoded_get_char_id(dsc->text, real_line_start + next_char_offset);
 #endif
             }
 
@@ -531,25 +591,29 @@ void lv_draw_label_iterate_characters(lv_draw_task_t * t, const lv_draw_label_ds
 
         /*Go to next line*/
         remaining_len -= line_end - line_start;
+#if LV_USE_TEXTFLOW == 0
         line_start = line_end;
+        real_line_start = line_start;
         if(remaining_len) {
-            line_end += lv_text_get_next_line(&dsc->text[line_start], remaining_len, font, NULL, &text_attributes);
+            line_end += lv_text_get_next_line(&dsc->text[real_line_start], remaining_len, font,  NULL,
+                                              &text_attributes);
         }
 
         pos.x = coords->x1;
         /*Align to middle*/
         if(align == LV_TEXT_ALIGN_CENTER) {
             line_width =
-                lv_text_get_width(&dsc->text[line_start], line_end - line_start, font, &text_attributes);
+                lv_text_get_width(&dsc->text[real_line_start], line_end - line_start, font, &text_attributes);
 
             pos.x += (lv_area_get_width(coords) - line_width) / 2;
         }
         /*Align to the right*/
         else if(align == LV_TEXT_ALIGN_RIGHT) {
             line_width =
-                lv_text_get_width(&dsc->text[line_start], line_end - line_start, font, &text_attributes);
+                lv_text_get_width(&dsc->text[real_line_start], line_end - line_start, font, &text_attributes);
             pos.x += lv_area_get_width(coords) - line_width;
         }
+#endif
 
         /*Go the next line position*/
         pos.y += line_height;
@@ -558,6 +622,10 @@ void lv_draw_label_iterate_characters(lv_draw_task_t * t, const lv_draw_label_ds
     }
 
     if(draw_letter_dsc._draw_buf) lv_draw_buf_destroy(draw_letter_dsc._draw_buf);
+
+#if LV_USE_TEXTFLOW != 0
+    lv_text_line_process_iter_destroy(line_iter);
+#endif
 
     LV_ASSERT_MEM_INTEGRITY();
 }

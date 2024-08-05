@@ -15,6 +15,11 @@
 #include "../stdlib/lv_string.h"
 #include "../misc/lv_types.h"
 
+#if LV_USE_TEXTFLOW != 0
+    #include "../misc/lv_iter.h"
+    #include "../misc/lv_text_line_process.h"
+#endif
+
 /*********************
  *      DEFINES
  *********************/
@@ -109,7 +114,6 @@ void lv_text_get_size_attributes(lv_point_t * size_res, const char * text, const
                                  lv_text_attributes_t * attributes)
 {
     uint32_t line_start     = 0;
-    uint32_t new_line_start = 0;
     uint16_t letter_height  = 0;
     size_res->x = 0;
     size_res->y = 0;
@@ -120,9 +124,12 @@ void lv_text_get_size_attributes(lv_point_t * size_res, const char * text, const
 
     letter_height = lv_font_get_line_height(font);
 
-    if(attributes->text_flags & LV_TEXT_FLAG_EXPAND) {
+    if(attributes->text_flags & LV_TEXT_FLAG_EXPAND || attributes->max_width <= 0) {
         attributes->max_width = LV_COORD_MAX;
     }
+
+#if LV_USE_TEXTFLOW == 0
+    uint32_t new_line_start = 0;
 
     /*Calc. the height and longest line*/
     while(text[line_start] != '\0') {
@@ -146,6 +153,33 @@ void lv_text_get_size_attributes(lv_point_t * size_res, const char * text, const
         size_res->x = LV_MAX(act_line_length, size_res->x);
         line_start  = new_line_start;
     }
+#else
+    lv_iter_t * line_iter = lv_text_line_process_iter_create(text, font, attributes->max_width, attributes->letter_space, 0, true);
+    lv_text_line_process_line_info_t line_info;
+
+    /*Calc. the height and longest line*/
+    while(lv_iter_next(line_iter, &line_info) == LV_RESULT_OK) {
+        if((unsigned long)size_res->y + (unsigned long)letter_height + (unsigned long)attributes->line_space > LV_MAX_OF(
+               int32_t)) {
+            LV_LOG_WARN("integer overflow while calculating text height");
+            lv_text_line_process_iter_destroy(line_iter);
+            return;
+        }
+        else {
+            size_res->y += letter_height;
+            size_res->y += attributes->line_space;
+        }
+
+        /*Calculate the longest line*/
+        int32_t act_line_length = lv_text_get_width(&text[line_info.pos.start], line_info.pos.brk - line_info.pos.start, font,
+                                                    attributes);
+
+        size_res->x = LV_MAX(act_line_length, size_res->x);
+        line_start = line_info.pos.brk;
+    }
+
+    lv_text_line_process_iter_destroy(line_iter);
+#endif
 
     /*Make the text one line taller if the last character is '\n' or '\r'*/
     if((line_start != 0) && (text[line_start - 1] == '\n' || text[line_start - 1] == '\r')) {

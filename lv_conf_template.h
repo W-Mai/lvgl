@@ -709,6 +709,10 @@
 /*The control character to use for signaling text recoloring*/
 #define LV_TXT_COLOR_CMD "#"
 
+/* Textflow is a module to support more advanced text features (line break rules, etc.).
+ */
+#define LV_USE_TEXTFLOW 0
+
 /*==================
  * WIDGETS
  *================*/
