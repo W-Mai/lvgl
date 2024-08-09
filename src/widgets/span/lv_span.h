@@ -245,6 +245,14 @@ int32_t lv_spangroup_get_expand_height(lv_obj_t * obj, int32_t width);
 lv_span_coords_t lv_spangroup_get_span_coords(lv_obj_t * obj, lv_span_t * span);
 
 /**
+ * Get the span object by point.
+ * @param obj
+ * @param point
+ * @return
+ */
+lv_span_t * lv_spangroup_get_span_by_point(lv_obj_t * obj, lv_point_t * point);
+
+/**
  * Add an event callback to a span.
  * @param obj       pointer to a spangroup object.
  * @param span      pointer to a span.
