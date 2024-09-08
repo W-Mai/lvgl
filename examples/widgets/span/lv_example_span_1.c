@@ -32,7 +32,7 @@ void lv_example_span_1(void)
 
     lv_spangroup_set_align(spans, LV_TEXT_ALIGN_LEFT);
     lv_spangroup_set_overflow(spans, LV_SPAN_OVERFLOW_CLIP);
-    lv_spangroup_set_indent(spans, 20);
+    // lv_spangroup_set_indent(spans, 20);
     lv_spangroup_set_mode(spans, LV_SPAN_MODE_BREAK);
 
     lv_span_t * span = lv_spangroup_new_span(spans);

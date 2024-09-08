@@ -179,6 +179,7 @@ static bool freetype_glyph_create_cb(lv_freetype_glyph_cache_data_t * data, void
 
     lv_mutex_unlock(&dsc->cache_node->face_lock);
 
+    printf("UNICODE %u %u\n", data->unicode, glyph_index);
     return true;
 }
 static void freetype_glyph_free_cb(lv_freetype_glyph_cache_data_t * data, void * user_data)

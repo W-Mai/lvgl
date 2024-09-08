@@ -19,6 +19,8 @@
 
 #define CACHE_NAME "FREETYPE_OUTLINE"
 
+uint32_t GL_OUTLINE_TEST_GLYPH_INDEX = 0;
+
 /**********************
  *      TYPEDEFS
  **********************/
@@ -349,6 +351,9 @@ static lv_freetype_outline_t outline_create(
         outline_delete(ctx, outline);
         return NULL;
     }
+
+    // printf("OUTLINE_TES_UNICODE\t\t %u\n", glyph_index);
+    GL_OUTLINE_TEST_GLYPH_INDEX = glyph_index;
 
     /* close outline */
     res = outline_push_point(outline, LV_FREETYPE_OUTLINE_END, NULL, NULL, NULL);

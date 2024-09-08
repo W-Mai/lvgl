@@ -5,8 +5,10 @@
 #if LV_FREETYPE_USE_LVGL_PORT
     #define PATH_PREFIX "A:"
 #else
-    #define PATH_PREFIX "./"
+    #define PATH_PREFIX "./../../External/"
 #endif
+
+#include "common_chars.h"
 
 /**
  * Load a font with FreeType
@@ -14,9 +16,9 @@
 void lv_example_freetype_1(void)
 {
     /*Create a font*/
-    lv_font_t * font = lv_freetype_font_create(PATH_PREFIX "lvgl/examples/libs/freetype/Lato-Regular.ttf",
-                                               LV_FREETYPE_FONT_RENDER_MODE_BITMAP,
-                                               24,
+    lv_font_t * font = lv_freetype_font_create( "/Users/w-mai/Downloads/新建文件夹/MiSans-Regular.ttf",
+                                               LV_FREETYPE_FONT_RENDER_MODE_OUTLINE,
+                                               12,
                                                LV_FREETYPE_FONT_STYLE_NORMAL);
 
     if(!font) {
@@ -33,7 +35,8 @@ void lv_example_freetype_1(void)
     /*Create a label with the new style*/
     lv_obj_t * label = lv_label_create(lv_screen_active());
     lv_obj_add_style(label, &style, 0);
-    lv_label_set_text(label, "Hello world\nI'm a font created with FreeType");
+    lv_label_set_text(label, text);
+        lv_obj_set_width(label, 1440);
     lv_obj_center(label);
 }
 #else

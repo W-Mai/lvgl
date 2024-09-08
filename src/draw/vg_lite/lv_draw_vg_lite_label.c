@@ -301,7 +301,11 @@ static void draw_letter_outline(lv_draw_vg_lite_unit_t * u, const lv_draw_glyph_
 
     LV_PROFILER_END;
 }
-
+struct lv_vg_lite_path_t {
+    vg_lite_path_t base;
+    size_t mem_size;
+    uint8_t format_len;
+};
 static void vg_lite_outline_push(const lv_freetype_outline_event_param_t * param)
 {
     LV_PROFILER_BEGIN;
@@ -317,6 +321,9 @@ static void vg_lite_outline_push(const lv_freetype_outline_event_param_t * param
          */
         case LV_FREETYPE_OUTLINE_END:
             lv_vg_lite_path_end(outline);
+        extern uint32_t GL_OUTLINE_TEST_GLYPH_INDEX;
+            printf("OUTLINE_MEM_SIZE %u %u %u\n", GL_OUTLINE_TEST_GLYPH_INDEX, (uint32_t)outline->mem_size, outline->base.path_length);
+            // lv_vg_lite_path_dump_info(&outline->base);
             break;
         case LV_FREETYPE_OUTLINE_MOVE_TO:
             lv_vg_lite_path_move_to(outline, param->to.x, -param->to.y);
