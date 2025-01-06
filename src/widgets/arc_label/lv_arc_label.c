@@ -327,20 +327,13 @@ static void arc_label_draw_main(lv_event_t * e)
     lv_area_t coords;
     lv_obj_get_content_coords(obj, &coords);
 
-    int32_t w = lv_obj_get_width(obj);
-    int32_t h = lv_obj_get_height(obj);
-    int32_t ls = lv_obj_get_style_space_left(obj, LV_PART_MAIN);
-    int32_t rs = lv_obj_get_style_space_right(obj, LV_PART_MAIN);
-    int32_t ts = lv_obj_get_style_pad_top(obj, LV_PART_MAIN);
-    int32_t bs = lv_obj_get_style_space_bottom(obj, LV_PART_MAIN);
-    int32_t scroll_top = lv_obj_get_scroll_top(obj);
-    int32_t scroll_left = lv_obj_get_scroll_left(obj);
-
     lv_layer_t * layer = lv_event_get_layer(e);
+
+    const lv_font_t * font = lv_obj_get_style_text_font(obj, LV_PART_MAIN);
 
     int32_t arc_r = arc_label->radius;
 
-    for(lv_value_precise_t angle_start = 0; angle_start < arc_label->angle_size; angle_start += 20) {
+    for(lv_value_precise_t angle_start = 0; angle_start < arc_label->angle_size; angle_start += 60) {
         lv_value_precise_t curr_angle = arc_label->angle_start + (arc_label->dir == LV_ARC_LABEL_DIR_CLOCKWISE ? angle_start :
                                                                   -angle_start);
 
@@ -356,13 +349,13 @@ static void arc_label_draw_main(lv_event_t * e)
         // };
 
         lv_point_t point = {
-            (int32_t)(x + (ls + w) / 2 + coords.x1),
-            (int32_t)(y + (ts + h) / 2 + coords.y1),
+            (int32_t)(x + lv_area_get_width(&coords) / 2 + coords.x1),
+            (int32_t)(y + lv_area_get_height(&coords) / 2 + coords.y1),
         };
 
-        lv_draw_label_dsc_t dsc;
-        lv_draw_label_dsc_init(&dsc);
-        dsc.font = lv_obj_get_style_text_font(obj, LV_PART_MAIN);
+        lv_draw_letter_dsc_t dsc;
+        lv_draw_letter_dsc_init(&dsc);
+        dsc.font = font;
 
         dsc.color = lv_color_make(0x11, 0x45, 0x14);
         dsc.rotation = curr_angle * 10 + 900;
@@ -374,9 +367,24 @@ static void arc_label_draw_main(lv_event_t * e)
             .y2 = point.y
         };
 
-        lv_draw_character(layer, &dsc, &point, '6');
-    }
+        dsc.unicode = 20320;
+        lv_draw_letter(layer, &dsc, &point);
 
+        lv_draw_line_dsc_t line_dsc;
+        lv_draw_line_dsc_init(&line_dsc);
+        line_dsc.color = lv_color_make(0x00, 0x45, 0x45);
+        line_dsc.width = 2;
+        line_dsc.p1 = (lv_point_precise_t) {
+            .x = point.x,
+            .y = point.y
+        };
+        line_dsc.p2 = (lv_point_precise_t) {
+            .x = lv_area_get_width(&coords) / 2 + coords.x1,
+            .y = lv_area_get_height(&coords) / 2 + coords.y1
+        };
+
+        lv_draw_line(layer, &line_dsc);
+    }
 }
 
 static void inv_arc_area(lv_obj_t * obj, lv_value_precise_t start_angle, lv_value_precise_t end_angle, lv_part_t part)
