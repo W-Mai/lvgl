@@ -333,7 +333,10 @@ static void arc_label_draw_main(lv_event_t * e)
 
     int32_t arc_r = arc_label->radius;
 
-    for(lv_value_precise_t angle_start = 0; angle_start < arc_label->angle_size; angle_start += 60) {
+
+    uint32_t word_i = 0;
+    int32_t prev_letter_w = 0;
+    for(lv_value_precise_t angle_start = 0; angle_start < arc_label->angle_size;) {
         lv_value_precise_t curr_angle = arc_label->angle_start + (arc_label->dir == LV_ARC_LABEL_DIR_CLOCKWISE ? angle_start :
                                                                   -angle_start);
 
@@ -367,23 +370,44 @@ static void arc_label_draw_main(lv_event_t * e)
             .y2 = point.y
         };
 
-        dsc.unicode = 20320;
+        uint32_t letter;
+        uint32_t letter_next;
+        lv_text_encoded_letter_next_2(arc_label->text, &letter, &letter_next, &word_i);
+
+        dsc.unicode = letter;
+        if(dsc.unicode == 0) {
+            break;
+        }
+
         lv_draw_letter(layer, &dsc, &point);
 
-        lv_draw_line_dsc_t line_dsc;
-        lv_draw_line_dsc_init(&line_dsc);
-        line_dsc.color = lv_color_make(0x00, 0x45, 0x45);
-        line_dsc.width = 2;
-        line_dsc.p1 = (lv_point_precise_t) {
-            .x = point.x,
-            .y = point.y
-        };
-        line_dsc.p2 = (lv_point_precise_t) {
-            .x = lv_area_get_width(&coords) / 2 + coords.x1,
-            .y = lv_area_get_height(&coords) / 2 + coords.y1
-        };
+        int32_t letter_w = lv_font_get_glyph_width(font, letter, letter_next);
+        int32_t letter_w2 = lv_font_get_glyph_width(font, letter_next, 0);
+        // uint32_t angle_offset = letter_w * 180 / 3.141592653579 / arc_r;
+        LV_LOG_USER("%c %c %d", letter, letter_next, (prev_letter_w + letter_w) / 2);
+        uint32_t angle_offset = (letter_w2 + letter_w) / 2 * 180 / 3.141592653579 / arc_r;
+        // if (word_i > 0) {
 
-        lv_draw_line(layer, &line_dsc);
+            angle_start += angle_offset;
+        // }
+
+        prev_letter_w = letter_w;
+
+        //
+        // lv_draw_line_dsc_t line_dsc;
+        // lv_draw_line_dsc_init(&line_dsc);
+        // line_dsc.color = lv_color_make(0x00, 0x45, 0x45);
+        // line_dsc.width = 2;
+        // line_dsc.p1 = (lv_point_precise_t) {
+        //     .x = point.x,
+        //     .y = point.y
+        // };
+        // line_dsc.p2 = (lv_point_precise_t) {
+        //     .x = lv_area_get_width(&coords) / 2 + coords.x1,
+        //     .y = lv_area_get_height(&coords) / 2 + coords.y1
+        // };
+        //
+        // lv_draw_line(layer, &line_dsc);
     }
 }
 
