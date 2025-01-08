@@ -154,7 +154,7 @@ void lv_text_get_size_attributes(lv_point_t * size_res, const char * text, const
         line_start  = new_line_start;
     }
 #else
-    lv_iter_t * line_iter = lv_text_line_process_iter_create(text, font, attributes->max_width, attributes->letter_space, 0, true);
+    lv_iter_t * line_iter = lv_text_line_process_iter_create(text, LV_TEXT_LEN_MAX, font, attributes->max_width, attributes->letter_space, 0, true);
     lv_text_line_process_line_info_t line_info;
 
     /*Calc. the height and longest line*/
