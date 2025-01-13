@@ -129,10 +129,24 @@ void lv_arc_label_set_recolor(lv_obj_t * obj, bool en);
 /**
  * Set the radius for an arc label object.
  *
- * @param obj       Pointer to the arc label object.
+ * @param obj       pointer to the arc label object.
  * @param radius    The radius value to set for the label's curvature, in pixels.
  */
 void lv_arc_label_set_radius(lv_obj_t * obj, uint32_t radius);
+
+/**
+ * Set the center offset x for an arc label object.
+ * @param obj       pointer to an arc label object
+ * @param x         the x offset
+ */
+void lv_arc_label_set_center_offset_x(lv_obj_t * obj, uint32_t x);
+
+/**
+ * Set the center offset y for an arc label object.
+ * @param obj      pointer to an arc label object
+ * @param y        the y offset
+ */
+void lv_arc_label_set_center_offset_y(lv_obj_t * obj, uint32_t y);
 
 /*=====================
  * Getter functions
@@ -169,8 +183,27 @@ lv_arc_label_dir_t lv_arc_label_get_dir(const lv_obj_t * obj);
  */
 bool lv_arc_label_get_recolor(lv_obj_t * obj);
 
-
+/**
+ * Get the text of the arc label.
+ * @param obj       pointer to an arc object
+ * @return          the radius of the arc label
+ */
 uint32_t lv_arc_label_get_radius(lv_obj_t * obj);
+
+/**
+ * Get the center offset x for an arc label object.
+ * @param obj       pointer to an arc label object
+ * @return          the x offset
+ */
+uint32_t lv_arc_label_get_center_offset_x(lv_obj_t * obj);
+
+/**
+ * Get the center offset y for an arc label object.
+ * @param obj       pointer to an arc label object
+ * @return          the y offset
+ */
+uint32_t lv_arc_label_get_center_offset_y(lv_obj_t * obj);
+
 
 /*=====================
  * Other functions

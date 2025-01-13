@@ -35,8 +35,6 @@
 static void lv_arc_label_constructor(const lv_obj_class_t * class_p, lv_obj_t * obj);
 static void arc_label_draw_main(lv_event_t * e);
 static void lv_arc_label_event(const lv_obj_class_t * class_p, lv_event_t * e);
-static void get_center(const lv_obj_t * obj, lv_point_t * center, int32_t * arc_r);
-static lv_value_precise_t get_angle(const lv_obj_t * obj);
 
 /**********************
  *  STATIC VARIABLES
@@ -111,7 +109,7 @@ void lv_arc_label_set_text(lv_obj_t * obj, const char * text)
         arc_label->static_txt = 0;
     }
 
-    // lv_arc_label_refr_text(obj);
+    lv_obj_invalidate(obj);
 }
 
 void lv_arc_label_set_text_fmt(lv_obj_t * obj, const char * fmt, ...)
@@ -124,7 +122,7 @@ void lv_arc_label_set_text_fmt(lv_obj_t * obj, const char * fmt, ...)
 
     /*If text is NULL then refresh*/
     if(fmt == NULL) {
-        // lv_arc_label_refr_text(obj);
+        lv_obj_invalidate(obj);
         return;
     }
 
@@ -139,7 +137,7 @@ void lv_arc_label_set_text_fmt(lv_obj_t * obj, const char * fmt, ...)
     va_end(args);
     arc_label->static_txt = 0; /*Now the text is dynamically allocated*/
 
-    // lv_arc_label_refr_text(obj);
+    lv_obj_invalidate(obj);
 }
 
 void lv_arc_label_set_text_static(lv_obj_t * obj, const char * text)
@@ -157,7 +155,7 @@ void lv_arc_label_set_text_static(lv_obj_t * obj, const char * text)
         arc_label->text       = (char *)text;
     }
 
-    // lv_arc_label_refr_text(obj);
+    lv_obj_invalidate(obj);
 }
 
 void lv_arc_label_set_angle_start(lv_obj_t * obj, lv_value_precise_t start)
@@ -166,6 +164,7 @@ void lv_arc_label_set_angle_start(lv_obj_t * obj, lv_value_precise_t start)
     lv_arc_label_t * arc = (lv_arc_label_t *)obj;
 
     arc->angle_start = start;
+    lv_obj_invalidate(obj);
 }
 
 void lv_arc_label_set_angle_size(lv_obj_t * obj, lv_value_precise_t size)
@@ -174,6 +173,7 @@ void lv_arc_label_set_angle_size(lv_obj_t * obj, lv_value_precise_t size)
     lv_arc_label_t * arc = (lv_arc_label_t *)obj;
 
     arc->angle_size = size;
+    lv_obj_invalidate(obj);
 }
 
 void lv_arc_label_set_offset(lv_obj_t * obj, int32_t offset)
@@ -182,6 +182,7 @@ void lv_arc_label_set_offset(lv_obj_t * obj, int32_t offset)
     lv_arc_label_t * arc = (lv_arc_label_t *)obj;
 
     arc->offset = offset;
+    lv_obj_invalidate(obj);
 }
 
 void lv_arc_label_set_dir(lv_obj_t * obj, lv_arc_label_dir_t dir)
@@ -190,6 +191,7 @@ void lv_arc_label_set_dir(lv_obj_t * obj, lv_arc_label_dir_t dir)
     lv_arc_label_t * arc = (lv_arc_label_t *)obj;
 
     arc->dir = dir;
+    lv_obj_invalidate(obj);
 }
 
 void lv_arc_label_set_recolor(lv_obj_t * obj, bool en)
@@ -197,6 +199,7 @@ void lv_arc_label_set_recolor(lv_obj_t * obj, bool en)
     LV_ASSERT_OBJ(obj, MY_CLASS);
     lv_arc_label_t * arc = (lv_arc_label_t *)obj;
     arc->recolor = en;
+    lv_obj_invalidate(obj);
 }
 
 void lv_arc_label_set_radius(lv_obj_t * obj, uint32_t radius)
@@ -205,6 +208,25 @@ void lv_arc_label_set_radius(lv_obj_t * obj, uint32_t radius)
     lv_arc_label_t * arc = (lv_arc_label_t *)obj;
 
     arc->radius = radius;
+    lv_obj_invalidate(obj);
+}
+
+void lv_arc_label_set_center_offset_x(lv_obj_t * obj, uint32_t x)
+{
+    LV_ASSERT_OBJ(obj, MY_CLASS);
+    lv_arc_label_t * arc = (lv_arc_label_t *)obj;
+
+    arc->center_offset.x = x;
+    lv_obj_invalidate(obj);
+}
+
+void lv_arc_label_set_center_offset_y(lv_obj_t * obj, uint32_t y)
+{
+    LV_ASSERT_OBJ(obj, MY_CLASS);
+    lv_arc_label_t * arc = (lv_arc_label_t *)obj;
+
+    arc->center_offset.y = y;
+    lv_obj_invalidate(obj);
 }
 
 /*=====================
@@ -228,6 +250,30 @@ lv_arc_label_dir_t lv_arc_label_get_dir(const lv_obj_t * obj)
 {
     LV_ASSERT_OBJ(obj, MY_CLASS);
     return ((lv_arc_label_t *) obj)->dir;
+}
+
+bool lv_arc_label_get_recolor(lv_obj_t * obj)
+{
+    LV_ASSERT_OBJ(obj, MY_CLASS);
+    return ((lv_arc_label_t *) obj)->recolor;
+}
+
+uint32_t lv_arc_label_get_radius(lv_obj_t * obj)
+{
+    LV_ASSERT_OBJ(obj, MY_CLASS);
+    return ((lv_arc_label_t *) obj)->radius;
+}
+
+uint32_t lv_arc_label_get_center_offset_x(lv_obj_t * obj)
+{
+    LV_ASSERT_OBJ(obj, MY_CLASS);
+    return ((lv_arc_label_t *) obj)->center_offset.x;
+}
+
+uint32_t lv_arc_label_get_center_offset_y(lv_obj_t * obj)
+{
+    LV_ASSERT_OBJ(obj, MY_CLASS);
+    return ((lv_arc_label_t *) obj)->center_offset.y;
 }
 
 /*=====================
@@ -273,42 +319,6 @@ static void lv_arc_label_event(const lv_obj_class_t * class_p, lv_event_t * e)
     if((code == LV_EVENT_STYLE_CHANGED) || (code == LV_EVENT_SIZE_CHANGED)) {
         // lv_label_refr_text(obj);
     }
-    else if(code == LV_EVENT_REFR_EXT_DRAW_SIZE) {
-        /* Italic or other non-typical letters can be drawn of out of the object.
-         * It happens if box_w + ofs_x > adw_w in the glyph.
-         * To avoid this add some extra draw area.
-         * font_h / 4 is an empirical value. */
-        const lv_font_t * font = lv_obj_get_style_text_font(obj, LV_PART_MAIN);
-        const int32_t font_h = lv_font_get_line_height(font);
-        lv_event_set_ext_draw_size(e, font_h / 4);
-    }
-    else if(code == LV_EVENT_GET_SELF_SIZE) {
-        lv_arc_label_t * arc_label = (lv_arc_label_t *)obj;
-        // if(label->invalid_size_cache) {
-        //     const lv_font_t * font = lv_obj_get_style_text_font(obj, LV_PART_MAIN);
-        //     int32_t letter_space = lv_obj_get_style_text_letter_space(obj, LV_PART_MAIN);
-        //     int32_t line_space = lv_obj_get_style_text_line_space(obj, LV_PART_MAIN);
-        //     lv_text_flag_t flag = LV_TEXT_FLAG_NONE;
-        //     if(label->recolor != 0) flag |= LV_TEXT_FLAG_RECOLOR;
-        //     if(label->expand != 0) flag |= LV_TEXT_FLAG_EXPAND;
-        //
-        //     int32_t w;
-        //     if(lv_obj_get_style_width(obj, LV_PART_MAIN) == LV_SIZE_CONTENT && !obj->w_layout) w = LV_COORD_MAX;
-        //     else w = lv_obj_get_content_width(obj);
-        //     w = LV_MIN(w, lv_obj_get_style_max_width(obj, 0));
-        //
-        //     uint32_t dot_begin = label->dot_begin;
-        //     lv_label_revert_dots(obj);
-        //     lv_text_get_size(&label->size_cache, label->text, font, letter_space, line_space, w, flag);
-        //     lv_label_set_dots(obj, dot_begin);
-        //
-        //     label->invalid_size_cache = false;
-        // }
-
-        lv_point_t * self_size = lv_event_get_param(e);
-        // self_size->x = LV_MAX(self_size->x, label->size_cache.x);
-        // self_size->y = LV_MAX(self_size->y, label->size_cache.y);
-    }
     else if(code == LV_EVENT_DRAW_MAIN) {
         arc_label_draw_main(e);
     }
@@ -342,7 +352,7 @@ static void arc_label_draw_main(lv_event_t * e)
         if(processed_word_count > 0) {
             const lv_value_precise_t angle_offset = (prev_letter_w + letter_w) * 180 / 3.141592653589f / arc_r / 2;
             angle_start += angle_offset;
-            if (angle_start > arc_label->angle_size - letter_w / 2) {
+            if(angle_start > arc_label->angle_size - letter_w / 2) {
                 break;
             }
         }
@@ -354,8 +364,8 @@ static void arc_label_draw_main(lv_event_t * e)
         const lv_value_precise_t y = lv_trigo_sin(curr_angle) * arc_r / (lv_value_precise_t)32767;
 
         lv_point_t point = {
-            (x + lv_area_get_width(&coords) / 2 + coords.x1),
-            (y + lv_area_get_height(&coords) / 2 + coords.y1),
+            x + lv_area_get_width(&coords) / 2 + coords.x1 + arc_label->center_offset.x,
+            y + lv_area_get_height(&coords) / 2 + coords.y1 + arc_label->center_offset.y,
         };
 
         lv_draw_letter_dsc_t dsc;
@@ -393,147 +403,6 @@ static void arc_label_draw_main(lv_event_t * e)
         lv_draw_line(layer, &line_dsc);
 #endif
     }
-}
-
-static void inv_arc_area(lv_obj_t * obj, lv_value_precise_t start_angle, lv_value_precise_t end_angle, lv_part_t part)
-{
-    LV_ASSERT_OBJ(obj, MY_CLASS);
-
-    /*Skip this complicated invalidation if the arc is not visible*/
-    if(lv_obj_is_visible(obj) == false) return;
-
-    lv_arc_label_t * arc = (lv_arc_label_t *)obj;
-
-    if(start_angle == end_angle) return;
-
-    if(start_angle > 360) start_angle -= 360;
-    if(end_angle > 360) end_angle -= 360;
-
-    // start_angle += arc->rotation;
-    // end_angle += arc->rotation;
-
-    if(start_angle > 360) start_angle -= 360;
-    if(end_angle > 360) end_angle -= 360;
-
-    int32_t r;
-    lv_point_t c;
-    get_center(obj, &c, &r);
-
-    int32_t w = lv_obj_get_style_arc_width(obj, part);
-    int32_t rounded = lv_obj_get_style_arc_rounded(obj, part);
-
-    lv_area_t inv_area;
-    lv_draw_arc_get_area(c.x, c.y, r, start_angle, end_angle, w, rounded, &inv_area);
-
-    lv_obj_invalidate_area(obj, &inv_area);
-}
-
-static void inv_knob_area(lv_obj_t * obj)
-{
-    lv_point_t c;
-    int32_t r;
-    get_center(obj, &c, &r);
-
-    lv_area_t a;
-    // get_knob_area(obj, &c, r, &a);
-
-    // int32_t knob_extra_size = knob_get_extra_size(obj);
-
-    // if(knob_extra_size > 0) {
-    // lv_area_increase(&a, knob_extra_size, knob_extra_size);
-    // }
-
-    lv_obj_invalidate_area(obj, &a);
-}
-
-static void get_center(const lv_obj_t * obj, lv_point_t * center, int32_t * arc_r)
-{
-    int32_t left_bg = lv_obj_get_style_pad_left(obj, LV_PART_MAIN);
-    int32_t right_bg = lv_obj_get_style_pad_right(obj, LV_PART_MAIN);
-    int32_t top_bg = lv_obj_get_style_pad_top(obj, LV_PART_MAIN);
-    int32_t bottom_bg = lv_obj_get_style_pad_bottom(obj, LV_PART_MAIN);
-
-    int32_t r = (LV_MIN(lv_obj_get_width(obj) - left_bg - right_bg,
-                        lv_obj_get_height(obj) - top_bg - bottom_bg)) / 2;
-
-    center->x = obj->coords.x1 + r + left_bg;
-    center->y = obj->coords.y1 + r + top_bg;
-
-    if(arc_r) *arc_r = r;
-}
-
-static lv_value_precise_t get_angle(const lv_obj_t * obj)
-{
-    lv_arc_label_t * arc = (lv_arc_label_t *)obj;
-    // lv_value_precise_t angle = arc->rotation;
-    // if(arc->type == LV_ARC_LABEL_DIR_CLOCKWISE) {
-    //     angle += arc->angle_size;
-    // }
-    // else if(arc->type == LV_ARC_LABEL_DIR_COUNTER_CLOCKWISE) {
-    //     angle += arc->angle_start;
-    // }
-    // else if(arc->type == LV_ARC_LABEL_MODE_SYMMETRICAL) {
-    //     lv_value_precise_t bg_end = arc->bg_angle_end;
-    //     if(arc->bg_angle_end < arc->bg_angle_start) bg_end = arc->bg_angle_end + 360;
-    //     lv_value_precise_t indic_end = arc->angle_size;
-    //     if(arc->angle_size < arc->angle_start) indic_end = arc->angle_size + 360;
-    //
-    //     lv_value_precise_t angle_midpoint = (int32_t)(arc->bg_angle_start + bg_end) / 2;
-    //     if(arc->angle_start < angle_midpoint) angle += arc->angle_start;
-    //     else if(indic_end > angle_midpoint) angle += arc->angle_size;
-    //     else angle += angle_midpoint;
-    // }
-
-    // return angle;
-}
-
-/**
- * Used internally to update arc angles after a value change
- * @param arc pointer to an arc object
- */
-static void value_update(lv_obj_t * obj)
-{
-    // LV_ASSERT_OBJ(obj, MY_CLASS);
-    // lv_arc_label_t * arc = (lv_arc_label_t *)obj;
-    //
-    // /*If the value is still not set to any value do not update*/
-    // if(arc->value == VALUE_UNSET) return;
-    //
-    // lv_value_precise_t bg_midpoint, bg_end = arc->bg_angle_end;
-    // int32_t range_midpoint;
-    // if(arc->bg_angle_end < arc->bg_angle_start) bg_end = arc->bg_angle_end + 360;
-    //
-    // int32_t angle;
-    // switch(arc->type) {
-    //     case LV_ARC_LABEL_MODE_SYMMETRICAL:
-    //         bg_midpoint = (arc->bg_angle_start + bg_end) / 2;
-    //         range_midpoint = (int32_t)(arc->min_value + arc->max_value) / 2;
-    //
-    //         if(arc->value < range_midpoint) {
-    //             angle = lv_map(arc->value, arc->min_value, range_midpoint, (int32_t)arc->bg_angle_start, (int32_t)bg_midpoint);
-    //             lv_arc_label_set_angle_start(obj, angle);
-    //             lv_arc_label_set_angle_end(obj, bg_midpoint);
-    //         }
-    //         else {
-    //             angle = lv_map(arc->value, range_midpoint, arc->max_value, (int32_t)bg_midpoint, (int32_t)bg_end);
-    //             lv_arc_label_set_angle_start(obj, bg_midpoint);
-    //             lv_arc_label_set_angle_end(obj, angle);
-    //         }
-    //         break;
-    //     case LV_ARC_LABEL_DIR_COUNTER_CLOCKWISE:
-    //         angle = lv_map(arc->value, arc->min_value, arc->max_value, (int32_t)bg_end, (int32_t)arc->bg_angle_start);
-    //         lv_arc_label_set_angles(obj, angle, arc->bg_angle_end);
-    //         break;
-    //     case LV_ARC_LABEL_DIR_CLOCKWISE:
-    //         angle = lv_map(arc->value, arc->min_value, arc->max_value, (int32_t)arc->bg_angle_start, (int32_t)bg_end);
-    //         lv_arc_label_set_angles(obj, arc->bg_angle_start, angle);
-    //
-    //         break;
-    //     default:
-    //         LV_LOG_WARN("Invalid mode: %d", arc->type);
-    //         return;
-    // }
-    // arc->last_angle = angle; /*Cache angle for slew rate limiting*/
 }
 
 #endif

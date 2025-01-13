@@ -52,6 +52,7 @@ struct _lv_arc_label_t {
     lv_value_precise_t angle_size;
     uint32_t offset;
     uint32_t radius;
+    lv_point_t center_offset;
     lv_arc_label_dir_t dir;
     uint8_t static_txt : 1;             /**< Flag to indicate the text is static */
     uint8_t recolor    : 1;             /**< Enable in-line letter re-coloring */
