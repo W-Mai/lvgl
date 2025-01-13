@@ -35,8 +35,6 @@
 static void lv_arc_label_constructor(const lv_obj_class_t * class_p, lv_obj_t * obj);
 static void arc_label_draw_main(lv_event_t * e);
 static void lv_arc_label_event(const lv_obj_class_t * class_p, lv_event_t * e);
-static void inv_arc_area(lv_obj_t * arc, lv_value_precise_t start_angle, lv_value_precise_t end_angle, lv_part_t part);
-static void inv_knob_area(lv_obj_t * obj);
 static void get_center(const lv_obj_t * obj, lv_point_t * center, int32_t * arc_r);
 static lv_value_precise_t get_angle(const lv_obj_t * obj);
 
@@ -47,7 +45,7 @@ const lv_obj_class_t lv_arc_label_class  = {
     .constructor_cb = lv_arc_label_constructor,
     .event_cb = lv_arc_label_event,
     .instance_size = sizeof(lv_arc_label_t),
-    .editable = LV_OBJ_CLASS_EDITABLE_TRUE,
+    .editable = LV_OBJ_CLASS_EDITABLE_FALSE,
     .base_class = &lv_obj_class,
     .name = "arc_label",
 };
@@ -247,7 +245,6 @@ static void lv_arc_label_constructor(const lv_obj_class_t * class_p, lv_obj_t * 
 
     lv_arc_label_t * arc = (lv_arc_label_t *)obj;
 
-    /*Initialize the allocated 'ext'*/
     arc->angle_start = 0;
     arc->angle_size  = 360;
     arc->dir = LV_ARC_LABEL_DIR_CLOCKWISE;
@@ -256,10 +253,8 @@ static void lv_arc_label_constructor(const lv_obj_class_t * class_p, lv_obj_t * 
     lv_obj_remove_flag(obj, LV_OBJ_FLAG_CLICKABLE);
     lv_arc_label_set_text(obj, LV_ARC_LABEL_DEFAULT_TEXT);
 
-    // lv_obj_remove_flag(obj, LV_OBJ_FLAG_CLICKABLE);
-    // lv_obj_add_flag(obj, LV_OBJ_FLAG_CLICKABLE);
-    // lv_obj_remove_flag(obj, LV_OBJ_FLAG_SCROLL_CHAIN | LV_OBJ_FLAG_SCROLLABLE);
-    // lv_obj_set_ext_click_area(obj, LV_DPI_DEF / 10);
+    lv_obj_remove_flag(obj, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_remove_flag(obj, LV_OBJ_FLAG_SCROLL_CHAIN | LV_OBJ_FLAG_SCROLLABLE);
 
     LV_TRACE_OBJ_CREATE("finished");
 }
@@ -330,49 +325,45 @@ static void arc_label_draw_main(lv_event_t * e)
     lv_layer_t * layer = lv_event_get_layer(e);
 
     const lv_font_t * font = lv_obj_get_style_text_font(obj, LV_PART_MAIN);
+    const lv_color_t color = lv_obj_get_style_text_color(obj, LV_PART_MAIN);
+    const lv_opa_t opa = lv_obj_get_style_text_opa(obj, LV_PART_MAIN);
 
     int32_t arc_r = arc_label->radius;
 
-
     uint32_t word_i = 0;
-    int32_t prev_letter_w = 0;
+    uint32_t processed_word_count = 0;
+    lv_value_precise_t prev_letter_w = 0;
     for(lv_value_precise_t angle_start = 0; angle_start < arc_label->angle_size;) {
+        uint32_t letter;
+        uint32_t letter_next;
+        lv_text_encoded_letter_next_2(arc_label->text, &letter, &letter_next, &word_i);
+        const lv_value_precise_t letter_w = lv_font_get_glyph_width(font, letter, letter_next);
+
+        if(processed_word_count > 0) {
+            const lv_value_precise_t angle_offset = (prev_letter_w + letter_w) * 180 / 3.141592653589f / arc_r / 2;
+            angle_start += angle_offset;
+            if (angle_start > arc_label->angle_size - letter_w / 2) {
+                break;
+            }
+        }
+
         lv_value_precise_t curr_angle = arc_label->angle_start + (arc_label->dir == LV_ARC_LABEL_DIR_CLOCKWISE ? angle_start :
                                                                   -angle_start);
 
-        float sin_value = lv_trigo_sin(curr_angle) / 32767.0;
-        float cos_value = lv_trigo_cos(curr_angle) / 32767.0;
-
-        float x = cos_value * arc_r;
-        float y = sin_value * arc_r;
-
-        // lv_point_t point = {
-        //     (int32_t)(x + (ls + w) / 2),
-        //     (int32_t)(y + (ts + h) / 2)
-        // };
+        const lv_value_precise_t x = lv_trigo_cos(curr_angle) * arc_r / (lv_value_precise_t)32767;
+        const lv_value_precise_t y = lv_trigo_sin(curr_angle) * arc_r / (lv_value_precise_t)32767;
 
         lv_point_t point = {
-            (int32_t)(x + lv_area_get_width(&coords) / 2 + coords.x1),
-            (int32_t)(y + lv_area_get_height(&coords) / 2 + coords.y1),
+            (x + lv_area_get_width(&coords) / 2 + coords.x1),
+            (y + lv_area_get_height(&coords) / 2 + coords.y1),
         };
 
         lv_draw_letter_dsc_t dsc;
         lv_draw_letter_dsc_init(&dsc);
         dsc.font = font;
-
-        dsc.color = lv_color_make(0x11, 0x45, 0x14);
-        dsc.rotation = curr_angle * 10 + 900;
-
-        lv_area_t area = {
-            .x1 = point.x - 10,
-            .y1 = point.y - 10,
-            .x2 = point.x,
-            .y2 = point.y
-        };
-
-        uint32_t letter;
-        uint32_t letter_next;
-        lv_text_encoded_letter_next_2(arc_label->text, &letter, &letter_next, &word_i);
+        dsc.color = color;
+        dsc.opa = opa;
+        dsc.rotation = (curr_angle + 90) * 10;
 
         dsc.unicode = letter;
         if(dsc.unicode == 0) {
@@ -381,33 +372,26 @@ static void arc_label_draw_main(lv_event_t * e)
 
         lv_draw_letter(layer, &dsc, &point);
 
-        int32_t letter_w = lv_font_get_glyph_width(font, letter, letter_next);
-        int32_t letter_w2 = lv_font_get_glyph_width(font, letter_next, 0);
-        // uint32_t angle_offset = letter_w * 180 / 3.141592653579 / arc_r;
-        LV_LOG_USER("%c %c %d", letter, letter_next, (prev_letter_w + letter_w) / 2);
-        uint32_t angle_offset = (letter_w2 + letter_w) / 2 * 180 / 3.141592653579 / arc_r;
-        // if (word_i > 0) {
-
-            angle_start += angle_offset;
-        // }
-
         prev_letter_w = letter_w;
+        processed_word_count++;
 
-        //
-        // lv_draw_line_dsc_t line_dsc;
-        // lv_draw_line_dsc_init(&line_dsc);
-        // line_dsc.color = lv_color_make(0x00, 0x45, 0x45);
-        // line_dsc.width = 2;
-        // line_dsc.p1 = (lv_point_precise_t) {
-        //     .x = point.x,
-        //     .y = point.y
-        // };
-        // line_dsc.p2 = (lv_point_precise_t) {
-        //     .x = lv_area_get_width(&coords) / 2 + coords.x1,
-        //     .y = lv_area_get_height(&coords) / 2 + coords.y1
-        // };
-        //
-        // lv_draw_line(layer, &line_dsc);
+#if DEBUG
+        lv_draw_line_dsc_t line_dsc;
+        lv_draw_line_dsc_init(&line_dsc);
+        line_dsc.color = lv_color_make(0x11, 0x45, 0x14);
+        line_dsc.opa = LV_OPA_30;
+        line_dsc.width = 2;
+        line_dsc.p1 = (lv_point_precise_t) {
+            .x = point.x,
+            .y = point.y
+        };
+        line_dsc.p2 = (lv_point_precise_t) {
+            .x = lv_area_get_width(&coords) / 2 + coords.x1,
+            .y = lv_area_get_height(&coords) / 2 + coords.y1
+        };
+
+        lv_draw_line(layer, &line_dsc);
+#endif
     }
 }
 
@@ -503,28 +487,6 @@ static lv_value_precise_t get_angle(const lv_obj_t * obj)
     // return angle;
 }
 
-static void get_knob_area(lv_obj_t * obj, const lv_point_t * center, int32_t r, lv_area_t * knob_area)
-{
-    // int32_t indic_width = lv_obj_get_style_arc_width(obj, LV_PART_INDICATOR);
-    // int32_t indic_width_half = indic_width / 2;
-    // r -= indic_width_half;
-    //
-    // int32_t angle = (int32_t)get_angle(obj);
-    // int32_t knob_offset = lv_arc_label_get_knob_offset(obj);
-    // int32_t knob_x = (r * lv_trigo_sin(knob_offset + angle + 90)) >> LV_TRIGO_SHIFT;
-    // int32_t knob_y = (r * lv_trigo_sin(knob_offset + angle)) >> LV_TRIGO_SHIFT;
-    //
-    // int32_t left_knob = lv_obj_get_style_pad_left(obj, LV_PART_KNOB);
-    // int32_t right_knob = lv_obj_get_style_pad_right(obj, LV_PART_KNOB);
-    // int32_t top_knob = lv_obj_get_style_pad_top(obj, LV_PART_KNOB);
-    // int32_t bottom_knob = lv_obj_get_style_pad_bottom(obj, LV_PART_KNOB);
-    //
-    // knob_area->x1 = center->x + knob_x - left_knob - indic_width_half;
-    // knob_area->x2 = center->x + knob_x + right_knob + indic_width_half;
-    // knob_area->y1 = center->y + knob_y - top_knob - indic_width_half;
-    // knob_area->y2 = center->y + knob_y + bottom_knob + indic_width_half;
-}
-
 /**
  * Used internally to update arc angles after a value change
  * @param arc pointer to an arc object
@@ -572,92 +534,6 @@ static void value_update(lv_obj_t * obj)
     //         return;
     // }
     // arc->last_angle = angle; /*Cache angle for slew rate limiting*/
-}
-
-static int32_t knob_get_extra_size(lv_obj_t * obj)
-{
-    int32_t knob_shadow_size = 0;
-    knob_shadow_size += lv_obj_get_style_shadow_width(obj, LV_PART_KNOB);
-    knob_shadow_size += lv_obj_get_style_shadow_spread(obj, LV_PART_KNOB);
-    knob_shadow_size += LV_ABS(lv_obj_get_style_shadow_offset_x(obj, LV_PART_KNOB));
-    knob_shadow_size += LV_ABS(lv_obj_get_style_shadow_offset_y(obj, LV_PART_KNOB));
-
-    int32_t knob_outline_size = 0;
-    knob_outline_size += lv_obj_get_style_outline_width(obj, LV_PART_KNOB);
-    knob_outline_size += lv_obj_get_style_outline_pad(obj, LV_PART_KNOB);
-
-    return LV_MAX(knob_shadow_size, knob_outline_size);
-}
-
-/**
- * Check if angle is within arc background bounds
- *
- * In order to avoid unexpected value update of the arc value when the user clicks
- * outside of the arc background we need to check if the angle (of the clicked point)
- * is within the bounds of the background.
- *
- * A tolerance (extra room) also should be taken into consideration.
- *
- * E.g. Arc with start angle of 0° and end angle of 90°, the background is only visible in
- * that range, from 90° to 360° the background is invisible. Click in 150° should not update
- * the arc value, click within the arc angle range should.
- *
- * IMPORTANT NOTE: angle is always relative to bg_angle_start, e.g. if bg_angle_start is 30
- * and we click a bit to the left, angle is 10, not the expected 40.
- *
- * @param obj   Pointer to lv_arc_label
- * @param angle Angle to be checked. Is 0<=angle<=360 and relative to bg_angle_start
- * @param tolerance_deg Tolerance
- *
- * @return true if angle is within arc background bounds, false otherwise
- */
-static bool lv_arc_label_angle_within_bg_bounds(lv_obj_t * obj, const lv_value_precise_t angle,
-                                                const lv_value_precise_t tolerance_deg)
-{
-    LV_ASSERT_OBJ(obj, MY_CLASS);
-    // lv_arc_label_t * arc = (lv_arc_label_t *)obj;
-    //
-    // lv_value_precise_t bounds_angle = arc->bg_angle_end - arc->bg_angle_start;
-    //
-    // /* ensure the angle is in the range [0, 360) */
-    // while(bounds_angle < 0) bounds_angle += 360;
-    // while(bounds_angle >= 360) bounds_angle -= 360;
-    //
-    // /* Angle is in the bounds */
-    // if(angle <= bounds_angle) {
-    //     if(angle < (bounds_angle / 2)) {
-    //         arc->min_close = CLICK_CLOSER_TO_MIN_END;
-    //     }
-    //     else {
-    //         arc->min_close = CLICK_CLOSER_TO_MAX_END;
-    //     }
-    //     arc->in_out = CLICK_INSIDE_BG_ANGLES;
-    //     return true;
-    // }
-    //
-    // /* Distance between background start and end angles is less than tolerance,
-    //  * consider the click inside the arc */
-    // if(360 - bounds_angle <= tolerance_deg) {
-    //     arc->min_close = CLICK_CLOSER_TO_MIN_END;
-    //     arc->in_out = CLICK_INSIDE_BG_ANGLES;
-    //     return true;
-    // }
-    //
-    // /* angle is within the tolerance of the min end */
-    // if(360 - angle <= tolerance_deg) {
-    //     arc->min_close = CLICK_CLOSER_TO_MIN_END;
-    //     arc->in_out = CLICK_OUTSIDE_BG_ANGLES;
-    //     return true;
-    // }
-    //
-    // /* angle is within the tolerance of the max end */
-    // if(angle <= bounds_angle + tolerance_deg) {
-    //     arc->min_close = CLICK_CLOSER_TO_MAX_END;
-    //     arc->in_out = CLICK_OUTSIDE_BG_ANGLES;
-    //     return true;
-    // }
-    //
-    // return false;
 }
 
 #endif
