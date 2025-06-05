@@ -917,10 +917,9 @@ static bool lv_text_get_snippet(const char * txt, const lv_font_t * font,
 #if LV_USE_TEXTFLOW == 0
     uint32_t ofs = lv_text_get_next_line(txt, LV_TEXT_LEN_MAX, font, use_width, &attributes);
 #else
-    LV_UNUSED(flag);
-
     lv_text_line_process_line_info_t line_info;
-    lv_iter_t * iter = lv_text_line_process_iter_create(txt, LV_TEXT_LEN_MAX, font, real_max_width, letter_space, 0, true);
+    lv_iter_t * iter = lv_text_line_process_iter_create(txt, LV_TEXT_LEN_MAX, font, real_max_width, letter_space, 0, true,
+                                                        attributes.text_flags);
     lv_iter_next(iter, &line_info);
     lv_text_line_process_iter_destroy(iter);
 
