@@ -148,6 +148,10 @@ static lv_result_t word_iter_next_cb(void * instance, void * context, void * ele
     lv_text_word_process_word_info_t * word_info = (lv_text_word_process_word_info_t *)elem;
     lv_iter_t * char_iter = ctx->char_iter;
 
+    if(ctx->has_word_info_pre && ctx->word_info_pre.pos.brk != UINT32_MAX && ctx->word_info_pre.pos.brk <= ctx->word_info_pre.pos.start) {
+        return LV_RESULT_INVALID;
+    }
+
     const uint32_t start = ctx->has_word_info_pre ? ctx->word_info_pre.pos.end : 0;
 
     uint32_t word_pos_end = start;
