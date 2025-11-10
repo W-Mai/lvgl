@@ -228,7 +228,7 @@ static lv_result_t line_iter_next_cb(void * instance, void * context, void * ele
             if(word_next.pos.brk == word_next.pos.end) {
                 if(word_next.type == LV_TEXT_WORD_PROCESS_CJK
                    || word_next.type == LV_TEXT_WORD_PROCESS_LATIN
-                   || word.type == LV_TEXT_WORD_PROCESS_NUMBER) {
+                   || word_next.type == LV_TEXT_WORD_PROCESS_NUMBER) {
                     continue;
                 }
                 else if(word_next.type == LV_TEXT_WORD_PROCESS_SPACE
