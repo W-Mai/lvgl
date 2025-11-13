@@ -48,7 +48,8 @@ typedef enum {
     LV_EVENT_RELEASED,            /**< Sent in every cases when Widget has been released */
     LV_EVENT_SCROLL_BEGIN,        /**< Scrolling begins. The event parameter is a pointer to the animation of the scroll. Can be modified */
     LV_EVENT_SCROLL_THROW_BEGIN,
-    LV_EVENT_SCROLL_END,          /**< Scrolling ends */
+    LV_EVENT_SCROLL_FINISHED,     /**< Scrolling is finished */
+    LV_EVENT_SCROLL_END,          /**< Scrolling ends. Whether it is finished or interrupted by other animations. */
     LV_EVENT_SCROLL,              /**< Scrolling */
     LV_EVENT_GESTURE,             /**< A gesture is detected. Get gesture with `lv_indev_get_gesture_dir(lv_indev_active());` */
     LV_EVENT_KEY,                 /**< A key is sent to Widget. Get key with `lv_indev_get_key(lv_indev_active());`*/

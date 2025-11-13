@@ -40,6 +40,7 @@
 static void scroll_x_anim(void * obj, int32_t v);
 static void scroll_y_anim(void * obj, int32_t v);
 static void scroll_end_cb(lv_anim_t * a);
+static void scroll_finished_cb(lv_anim_t * a);
 static void scroll_area_into_view(const lv_area_t * area, lv_obj_t * child, lv_point_t * scroll_value,
                                   lv_anim_enable_t anim_en);
 
@@ -315,6 +316,7 @@ void lv_obj_scroll_by(lv_obj_t * obj, int32_t dx, int32_t dy, lv_anim_enable_t a
         lv_anim_t a;
         lv_anim_init(&a);
         lv_anim_set_var(&a, obj);
+        lv_anim_set_completed_cb(&a, scroll_finished_cb);
         lv_anim_set_deleted_cb(&a, scroll_end_cb);
 
         if(dx) {
@@ -701,6 +703,11 @@ static void scroll_end_cb(lv_anim_t * a)
 {
     /*Do not sent END event if there wasn't a BEGIN*/
     if(a->start_cb_called) lv_obj_send_event(a->var, LV_EVENT_SCROLL_END, NULL);
+}
+
+static void scroll_finished_cb(lv_anim_t * a)
+{
+    lv_obj_send_event(a->var, LV_EVENT_SCROLL_FINISHED, NULL);
 }
 
 static void scroll_area_into_view(const lv_area_t * area, lv_obj_t * child, lv_point_t * scroll_value,
