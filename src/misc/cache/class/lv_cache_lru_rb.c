@@ -472,7 +472,7 @@ static uint32_t size_get_data_size_cb(const void * data)
 
 static lv_iter_t * cache_iter_create_cb(lv_cache_t * cache)
 {
-    return lv_iter_create(cache, lv_cache_entry_get_size(cache->node_size), sizeof(void *), cache_iter_next_cb);
+    return lv_iter_create(cache, lv_cache_entry_get_size(cache->node_size), sizeof(void*), 0, cache_iter_next_cb);
 }
 
 static lv_result_t cache_iter_next_cb(void * instance, void * context, void * elem)

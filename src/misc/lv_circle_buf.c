@@ -10,6 +10,7 @@
 #include "lv_assert.h"
 
 #include "lv_circle_buf.h"
+#include "lv_circle_buf_private.h"
 #include "lv_array.h"
 
 /*********************
@@ -19,14 +20,6 @@
 /**********************
  *      TYPEDEFS
  **********************/
-
-struct _lv_circle_buf_t {
-    lv_array_t array;
-    uint32_t head;
-    uint32_t tail;    /**< The next write position */
-
-    bool inner_alloc; /**< true: the array is allocated by the buffer, false: the array is created from an external buffer */
-};
 
 /**********************
  *  STATIC PROTOTYPES
@@ -63,10 +56,33 @@ lv_circle_buf_t * lv_circle_buf_create(const uint32_t capacity, const uint32_t e
     circle_buf->head = 0;
     circle_buf->tail = 0;
     circle_buf->inner_alloc = true;
+    circle_buf->is_static = false;
 
     circle_buf_prepare_empty(circle_buf);
 
     return circle_buf;
+}
+
+lv_result_t lv_circle_buf_init_from_buf(lv_circle_buf_t * circle_buf, void * buf, uint32_t capacity, uint32_t element_size)
+{
+    LV_ASSERT_NULL(circle_buf);
+    LV_ASSERT_NULL(buf);
+
+    if(circle_buf == NULL || buf == NULL) {
+        return LV_RESULT_INVALID;
+    }
+
+    lv_memzero(circle_buf, sizeof(lv_circle_buf_t));
+
+    lv_array_init_from_buf(&circle_buf->array, buf, capacity, element_size);
+    circle_buf->head = 0;
+    circle_buf->tail = 0;
+    circle_buf->inner_alloc = false;
+    circle_buf->is_static = true;
+
+    circle_buf_prepare_empty(circle_buf);
+
+    return LV_RESULT_OK;
 }
 
 lv_circle_buf_t * lv_circle_buf_create_from_buf(void * buf, const uint32_t capacity, const uint32_t element_size)
@@ -84,6 +100,7 @@ lv_circle_buf_t * lv_circle_buf_create_from_buf(void * buf, const uint32_t capac
     circle_buf->head = 0;
     circle_buf->tail = 0;
     circle_buf->inner_alloc = false;
+    circle_buf->is_static = false;
 
     circle_buf_prepare_empty(circle_buf);
 
@@ -108,6 +125,7 @@ lv_circle_buf_t * lv_circle_buf_create_from_array(const lv_array_t * array)
     circle_buf->head = 0;
     circle_buf->tail = 0;
     circle_buf->inner_alloc = false;
+    circle_buf->is_static = false;
 
     circle_buf_prepare_empty(circle_buf);
 
@@ -136,7 +154,7 @@ void lv_circle_buf_destroy(lv_circle_buf_t * circle_buf)
 
     lv_array_deinit(&circle_buf->array);
 
-    lv_free(circle_buf);
+    if (!circle_buf->is_static) lv_free(circle_buf);
 }
 
 uint32_t lv_circle_buf_size(const lv_circle_buf_t * circle_buf)

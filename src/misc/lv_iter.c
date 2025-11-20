@@ -12,6 +12,7 @@
 #include "lv_iter.h"
 
 #include "lv_circle_buf.h"
+#include "lv_circle_buf_private.h"
 
 /*********************
  *      DEFINES
@@ -29,7 +30,7 @@ struct _lv_iter_t {
     uint32_t context_size;    /**< Size of the custom context in bytes */
 
     /* Peeking */
-    lv_circle_buf_t * peek_buf;   /**< Circular buffer for peeking */
+    lv_circle_buf_t peek_buf;   /**< Circular buffer for peeking */
     uint32_t peek_offset;         /**< Offset in the peek buffer */
 
     /* Callbacks */
@@ -58,15 +59,25 @@ static bool peek_fill_cb(void * buf, uint32_t buf_len, int32_t index, void * use
  *   GLOBAL FUNCTIONS
  **********************/
 
-lv_iter_t * lv_iter_create(void * instance, const uint32_t elem_size, const uint32_t context_size,
-                           lv_iter_next_cb next_cb)
+lv_iter_t * lv_iter_create(void* instance, const uint32_t elem_size, const uint32_t context_size,
+    const uint32_t peek_capacity, lv_iter_next_cb next_cb)
 {
-    lv_iter_t * iter = lv_malloc_zeroed(sizeof(lv_iter_t));
+    lv_iter_t * iter;
+    if (peek_capacity == 0) {
+        iter = lv_malloc_zeroed(sizeof(lv_iter_t));
+    } else {
+        iter = lv_malloc_zeroed(sizeof(lv_iter_t) + peek_capacity * elem_size);
+    }
+
     LV_ASSERT_MALLOC(iter);
 
     if(iter == NULL) {
         LV_LOG_ERROR("Could not allocate memory for iterator");
         return NULL;
+    }
+
+    if (peek_capacity > 0) {
+        lv_circle_buf_init_from_buf(&iter->peek_buf, iter + 1, peek_capacity, elem_size);
     }
 
     iter->instance = instance;
@@ -95,31 +106,30 @@ void lv_iter_destroy(lv_iter_t * iter)
     if(iter == NULL) return;
 
     if(iter->context_size > 0) lv_free(iter->context);
-    if(iter->peek_buf != NULL) lv_circle_buf_destroy(iter->peek_buf);
+    lv_circle_buf_destroy(&iter->peek_buf);
 
     iter->context = NULL;
-    iter->peek_buf = NULL;
 
     lv_free(iter);
 }
 
-void lv_iter_make_peekable(lv_iter_t * iter, const uint32_t capacity)
-{
-    LV_ASSERT_NULL(iter);
-    if(iter == NULL) return;
-
-    if(capacity == 0 || iter->peek_buf != NULL) return;
-    iter->peek_buf = lv_circle_buf_create(capacity, iter->elem_size);
-    LV_ASSERT_NULL(iter->peek_buf);
-}
+// void lv_iter_make_peekable(lv_iter_t * iter, const uint32_t capacity)
+// {
+//     LV_ASSERT_NULL(iter);
+//     if(iter == NULL) return;
+//
+//     if(capacity == 0 || iter->peek_buf != NULL) return;
+//     iter->peek_buf = lv_circle_buf_create(capacity, iter->elem_size);
+//     LV_ASSERT_NULL(iter->peek_buf);
+// }
 
 lv_result_t lv_iter_next(lv_iter_t * iter, void * elem)
 {
     LV_ASSERT_NULL(iter);
     if(iter == NULL) return LV_RESULT_INVALID;
 
-    lv_circle_buf_t * c_buf = iter->peek_buf;
-    if(c_buf != NULL && !lv_circle_buf_is_empty(c_buf)) {
+    lv_circle_buf_t * c_buf = &iter->peek_buf;
+    if(lv_circle_buf_capacity(c_buf) > 0 && !lv_circle_buf_is_empty(c_buf)) {
         if(elem) lv_circle_buf_read(c_buf, elem);
         else lv_circle_buf_skip(c_buf);
         iter->peek_offset = 0;
@@ -139,8 +149,8 @@ lv_result_t lv_iter_peek(lv_iter_t * iter, void * elem)
     LV_ASSERT_NULL(iter);
     if(iter == NULL) return LV_RESULT_INVALID;
 
-    lv_circle_buf_t * c_buf = iter->peek_buf;
-    if(c_buf == NULL) return LV_RESULT_INVALID;
+    lv_circle_buf_t * c_buf = &iter->peek_buf;
+    if(lv_circle_buf_capacity(c_buf) == 0) return LV_RESULT_INVALID;
 
     const uint32_t peek_count = lv_circle_buf_size(c_buf);
     if(iter->peek_offset >= peek_count) {
@@ -159,7 +169,7 @@ lv_result_t lv_iter_peek_advance(lv_iter_t * iter)
     LV_ASSERT_NULL(iter);
     if(iter == NULL) return LV_RESULT_INVALID;
 
-    if(iter->peek_buf == NULL || iter->peek_offset + 1 >= lv_circle_buf_capacity(iter->peek_buf))
+    if(lv_circle_buf_capacity(&iter->peek_buf) == 0 || iter->peek_offset + 1 >= lv_circle_buf_capacity(&iter->peek_buf))
         return LV_RESULT_INVALID;
     iter->peek_offset++;
     return LV_RESULT_OK;
@@ -170,7 +180,7 @@ lv_result_t lv_iter_peek_reset(lv_iter_t * iter)
     LV_ASSERT_NULL(iter);
     if(iter == NULL) return LV_RESULT_INVALID;
 
-    if(iter->peek_buf == NULL) return LV_RESULT_INVALID;
+    if(lv_circle_buf_capacity(&iter->peek_buf) == 0) return LV_RESULT_INVALID;
 
     iter->peek_offset = 0;
     return LV_RESULT_OK;

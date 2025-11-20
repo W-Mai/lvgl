@@ -38,10 +38,11 @@ typedef void (*lv_iter_inspect_cb)(void * elem);
  * @param instance       The instance to be iterated
  * @param elem_size      The size of the element to be iterated in bytes
  * @param context_size   The size of the context to be passed to the next_cb in bytes
+ * @param peek_capacity
  * @param next_cb        The callback function to get the next element
  * @return               The iterator object
  */
-lv_iter_t * lv_iter_create(void * instance, uint32_t elem_size, uint32_t context_size, lv_iter_next_cb next_cb);
+lv_iter_t * lv_iter_create(void* instance, uint32_t elem_size, uint32_t context_size, uint32_t peek_capacity, lv_iter_next_cb next_cb);
 
 /**
  * Get the context of the iterator. You can use it to store some temporary variables associated with current iterator..
@@ -66,12 +67,12 @@ void lv_iter_destroy(lv_iter_t * iter);
  */
 lv_result_t lv_iter_next(lv_iter_t * iter, void * elem);
 
-/**
- * Make the iterator peekable, which means that the user can peek the next element without advancing the iterator.
- * @param iter          `lv_iter_t` object create before
- * @param capacity      The capacity of the peek buffer
- */
-void lv_iter_make_peekable(lv_iter_t * iter, uint32_t capacity);
+// /**
+//  * Make the iterator peekable, which means that the user can peek the next element without advancing the iterator.
+//  * @param iter          `lv_iter_t` object create before
+//  * @param capacity      The capacity of the peek buffer
+//  */
+// void lv_iter_make_peekable(lv_iter_t * iter, uint32_t capacity);
 
 /**
  * Peek the next element of the iterator without advancing the iterator.

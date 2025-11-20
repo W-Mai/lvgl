@@ -58,8 +58,8 @@ static lv_result_t line_iter_next_cb(void * instance, void * context, void * ele
 lv_iter_t * lv_text_line_process_iter_create(const char * txt, uint32_t text_len,
                                              const lv_font_t * font, uint16_t max_width, uint32_t letter_space, uint8_t tab_width, bool long_break, int8_t flag)
 {
-    lv_iter_t * iter = lv_iter_create((void *)txt, sizeof(lv_text_line_process_line_info_t), sizeof(lv_text_line_process_t),
-                                      line_iter_next_cb);
+    lv_iter_t * iter = lv_iter_create((void*)txt, sizeof(lv_text_line_process_line_info_t), sizeof(lv_text_line_process_t),
+        2, line_iter_next_cb);
 
     if(iter == NULL) return NULL;
 
@@ -109,7 +109,7 @@ static lv_result_t line_iter_next_cb(void * instance, void * context, void * ele
                                                              ctx->font, ctx->letter_space, ctx->max_width, 0);
     if(word_iter == NULL) return LV_RESULT_INVALID;
 
-    lv_iter_make_peekable(word_iter, 2);
+    // lv_iter_make_peekable(word_iter, 2);
 
     bool break_all = (ctx->flag & LV_TEXT_FLAG_BREAK_ALL) == LV_TEXT_FLAG_BREAK_ALL;
 

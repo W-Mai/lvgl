@@ -488,7 +488,7 @@ static lv_cache_reserve_cond_res_t reserve_cond_cb(lv_cache_t * cache,
 static lv_iter_t * cache_iter_create_cb(lv_cache_t * cache)
 {
     return lv_iter_create(cache, lv_cache_entry_get_size(cache->node_size),
-                          0, cache_iter_next_cb);
+        0, 0, cache_iter_next_cb);
 }
 
 static lv_result_t cache_iter_next_cb(void * instance, void * context, void * elem)

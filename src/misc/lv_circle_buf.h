@@ -40,6 +40,16 @@ typedef bool (*lv_circle_buf_fill_cb_t)(void * buf, uint32_t buff_len, int32_t i
 lv_circle_buf_t * lv_circle_buf_create(uint32_t capacity, uint32_t element_size);
 
 /**
+ * Initialize a circle buffer from an existing buffer
+ * @param circle_buf pointer to a circle buffer
+ * @param buf pointer to a buffer
+ * @param capacity the maximum number of elements in the buffer
+ * @param element_size the size of an element in bytes
+ * @return LV_RESULT_OK: the buffer is initialized; LV_RESULT_INVALID: the buffer is not initialized
+ */
+lv_result_t lv_circle_buf_init_from_buf(lv_circle_buf_t * circle_buf, void * buf, uint32_t capacity, uint32_t element_size);
+
+/**
  * Create a circle buffer from an existing buffer
  * @param buf pointer to a buffer
  * @param capacity the maximum number of elements in the buffer
