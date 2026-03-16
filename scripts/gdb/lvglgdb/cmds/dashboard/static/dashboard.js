@@ -313,7 +313,7 @@ function buildTimers(data) {
     hdr.appendChild(el("span", "mono-addr", t.addr));
     hdr.appendChild(badge(t.paused ? "paused" : "active", t.paused ? "yellow" : "green"));
     card.appendChild(hdr);
-    const info = el("div", "timer-info");
+    const info = el("div", "timer-info timer-info-row");
     info.appendChild(kvPair("callback", t.timer_cb || "-"));
     info.appendChild(kvPair("period", t.period + "ms"));
     info.appendChild(kvPair("frequency", t.frequency || "-"));
@@ -369,7 +369,6 @@ function buildImageCache(data) {
   const entries = data.image_cache || [];
   const { panel, body } = makePanel("panel-img-cache", "🖼", "Image Cache", entries.length);
   if (entries.length === 0) { body.appendChild(emptyMsg()); return panel; }
-  const grid = el("div", "cache-grid");
   entries.forEach(e => {
     const card = el("div", "cache-entry");
     if (e.entry_addr) card.id = "imgcache-" + e.entry_addr;
@@ -390,9 +389,8 @@ function buildImageCache(data) {
     info.appendChild(meta);
     info.appendChild(el("div", "cache-decoder-label", e.decoder_name || ""));
     card.appendChild(info);
-    grid.appendChild(card);
+    body.appendChild(card);
   });
-  body.appendChild(grid);
   return panel;
 }
 

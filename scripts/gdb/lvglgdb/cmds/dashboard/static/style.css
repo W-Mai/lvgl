@@ -392,11 +392,20 @@ a.xref:hover { color: var(--blue); border-bottom-color: var(--blue); }
 .progress-fill.green { background: var(--green); }
 
 /* === Animation cards === */
-.anim-card, .timer-card, .indev-card, .group-card, .dtask-card {
+/* === Timer cards === */
+.timer-card {
   background: var(--base); border: 1px solid var(--surface0);
   border-radius: var(--radius-sm); margin-bottom: 6px; overflow: hidden;
 }
-.anim-card:last-child, .timer-card:last-child, .indev-card:last-child,
+.timer-card:last-child { margin-bottom: 0; }
+.timer-info-row {
+  display: flex; flex-wrap: wrap; gap: 4px 16px;
+}
+.anim-card, .indev-card, .group-card, .dtask-card {
+  background: var(--base); border: 1px solid var(--surface0);
+  border-radius: var(--radius-sm); margin-bottom: 6px; overflow: hidden;
+}
+.anim-card:last-child, .indev-card:last-child,
 .group-card:last-child, .dtask-card:last-child { margin-bottom: 0; }
 
 .anim-header, .timer-header, .indev-header, .group-header, .dtask-header {
@@ -429,24 +438,23 @@ a.xref:hover { color: var(--blue); border-bottom-color: var(--blue); }
   font-family: "JetBrains Mono", monospace; font-size: 10px;
 }
 
-/* === Image cache grid === */
-.cache-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 6px;
-}
+/* === Image cache list === */
 .cache-entry {
+  display: flex; align-items: center;
   background: var(--base); border: 1px solid var(--surface0);
   border-radius: var(--radius-sm); overflow: hidden;
+  margin-bottom: 6px;
 }
+.cache-entry:last-child { margin-bottom: 0; }
 .cache-preview {
-  padding: 8px; display: flex; justify-content: center;
-  background: var(--surface0);
+  padding: 8px; display: flex; align-items: center; justify-content: center;
+  background: var(--surface0); flex-shrink: 0;
 }
 .cache-preview img {
-  max-width: 100%; max-height: 100px; border-radius: 4px;
-  image-rendering: pixelated;
+  width: 48px; height: 48px; border-radius: 4px;
+  image-rendering: pixelated; object-fit: contain;
 }
-.cache-info { padding: 6px 8px; }
+.cache-info { padding: 6px 10px; flex: 1; min-width: 0; }
 .cache-src {
   font-size: 11px; color: var(--text); font-weight: 500;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
