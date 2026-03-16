@@ -10,29 +10,34 @@
 </head>
 <body>
 <nav id="sidebar">
-<h2>LVGL Dashboard</h2>
-<input type="text" id="search" placeholder="Search..." aria-label="Search">
-<ul>
-<li><a href="#sec-displays">Displays</a></li>
-<li><a href="#sec-object-trees">Object Trees</a></li>
-<li><a href="#sec-animations">Animations</a></li>
-<li><a href="#sec-timers">Timers</a></li>
-<li><a href="#sec-image-cache">Image Cache</a></li>
-<li><a href="#sec-image-header-cache">Image Header Cache</a></li>
-<li><a href="#sec-indevs">Input Devices</a></li>
-<li><a href="#sec-groups">Groups</a></li>
-<li><a href="#sec-draw-units">Draw Units</a></li>
-<li><a href="#sec-draw-tasks">Draw Tasks</a></li>
-<li><a href="#sec-subjects">Subjects</a></li>
-<li><a href="#sec-image-decoders">Image Decoders</a></li>
-<li><a href="#sec-fs-drivers">FS Drivers</a></li>
+<div class="sidebar-brand">
+  <h2><span class="logo">LV</span> LVGL Dashboard</h2>
+</div>
+<input type="text" id="search" placeholder="Search sections..." aria-label="Search">
+<ul id="nav-list">
+  <li><a href="#sec-displays" data-key="displays"><span class="nav-icon">🖥</span>Displays<span class="nav-badge" id="badge-displays">0</span></a></li>
+  <li><a href="#sec-object-trees" data-key="object_trees"><span class="nav-icon">🌳</span>Object Trees<span class="nav-badge" id="badge-object_trees">0</span></a></li>
+  <li><a href="#sec-animations" data-key="animations"><span class="nav-icon">🎬</span>Animations<span class="nav-badge" id="badge-animations">0</span></a></li>
+  <li><a href="#sec-timers" data-key="timers"><span class="nav-icon">⏱</span>Timers<span class="nav-badge" id="badge-timers">0</span></a></li>
+  <li><a href="#sec-image-cache" data-key="image_cache"><span class="nav-icon">🖼</span>Image Cache<span class="nav-badge" id="badge-image_cache">0</span></a></li>
+  <li><a href="#sec-image-header-cache" data-key="image_header_cache"><span class="nav-icon">📋</span>Header Cache<span class="nav-badge" id="badge-image_header_cache">0</span></a></li>
+  <li><a href="#sec-indevs" data-key="indevs"><span class="nav-icon">🕹</span>Input Devices<span class="nav-badge" id="badge-indevs">0</span></a></li>
+  <li><a href="#sec-groups" data-key="groups"><span class="nav-icon">👥</span>Groups<span class="nav-badge" id="badge-groups">0</span></a></li>
+  <li><a href="#sec-draw-units" data-key="draw_units"><span class="nav-icon">🎨</span>Draw Units<span class="nav-badge" id="badge-draw_units">0</span></a></li>
+  <li><a href="#sec-draw-tasks" data-key="draw_tasks"><span class="nav-icon">📝</span>Draw Tasks<span class="nav-badge" id="badge-draw_tasks">0</span></a></li>
+  <li><a href="#sec-subjects" data-key="subjects"><span class="nav-icon">📡</span>Subjects<span class="nav-badge" id="badge-subjects">0</span></a></li>
+  <li><a href="#sec-image-decoders" data-key="image_decoders"><span class="nav-icon">🔓</span>Decoders<span class="nav-badge" id="badge-image_decoders">0</span></a></li>
+  <li><a href="#sec-fs-drivers" data-key="fs_drivers"><span class="nav-icon">💾</span>FS Drivers<span class="nav-badge" id="badge-fs_drivers">0</span></a></li>
 </ul>
 </nav>
 <main id="content">
 <div id="header-bar"></div>
+<div id="stats-container"></div>
 <div id="drop-zone" style="display:none">
-<p>Drag &amp; drop a JSON file here, or click to select</p>
-<input type="file" id="file-input" accept=".json" aria-label="Load JSON file">
+  <div class="drop-icon">📂</div>
+  <p>Drag &amp; drop a JSON file here, or click to select</p>
+  <div class="drop-hint">Exported via <code>dump dashboard --json</code></div>
+  <input type="file" id="file-input" accept=".json" aria-label="Load JSON file">
 </div>
 <div id="dashboard"></div>
 </main>
