@@ -315,12 +315,12 @@ a.xref:hover { color: var(--blue); border-bottom-color: var(--blue); }
 .style-panel th { font-size: 9px; }
 .style-panel td { padding: 2px 6px; }
 
-/* === Subject / Cache Cards === */
-.subject-card, .cache-entry {
+/* === Subject Cards === */
+.subject-card {
   background: var(--base); border: 1px solid var(--surface0);
   border-radius: var(--radius-sm); margin-bottom: 6px; overflow: hidden;
 }
-.subject-card:last-child, .cache-entry:last-child { margin-bottom: 0; }
+.subject-card:last-child { margin-bottom: 0; }
 .subject-header {
   display: flex; align-items: center; gap: 8px;
   padding: 6px 10px; font-size: 11px;
@@ -330,17 +330,6 @@ a.xref:hover { color: var(--blue); border-bottom-color: var(--blue); }
 .subject-addr { font-family: "JetBrains Mono", monospace; color: var(--sapphire); }
 .subject-type { color: var(--mauve); font-weight: 600; }
 .subject-card table { font-size: 11px; }
-.cache-info { padding: 8px 10px; }
-.cache-addr {
-  font-family: "JetBrains Mono", monospace; font-size: 11px;
-  color: var(--sapphire); margin-bottom: 2px;
-}
-.cache-detail { font-size: 11px; color: var(--subtext0); }
-.cache-preview { padding: 6px 10px 10px; display: flex; justify-content: center; }
-.cache-preview img {
-  max-width: 100%; max-height: 120px; border-radius: 4px;
-  border: 1px solid var(--surface0); image-rendering: pixelated;
-}
 
 /* === Drop Zone === */
 #drop-zone {
@@ -358,6 +347,139 @@ a.xref:hover { color: var(--blue); border-bottom-color: var(--blue); }
 .drop-hint code { background: var(--surface0); padding: 2px 6px; border-radius: 4px; }
 #file-input { display: none; }
 
+/* === Shared visualization components === */
+.badge {
+  display: inline-block; padding: 1px 7px; border-radius: 6px;
+  font-size: 10px; font-weight: 600; white-space: nowrap;
+}
+.badge-green  { background: var(--icon-bg-green);  color: var(--green); }
+.badge-yellow { background: rgba(249,226,175,0.12); color: var(--yellow); }
+.badge-red    { background: rgba(243,139,168,0.12); color: var(--red); }
+.badge-blue   { background: var(--icon-bg-blue);   color: var(--blue); }
+.badge-mauve  { background: var(--icon-bg-mauve);  color: var(--mauve); }
+.badge-peach  { background: var(--icon-bg-peach);  color: var(--peach); }
+.badge-teal   { background: var(--icon-bg-teal);   color: var(--teal); }
+
+.mono-addr {
+  font-family: "JetBrains Mono", monospace; font-size: 11px;
+  color: var(--sapphire);
+}
+.kv-row {
+  display: flex; align-items: baseline; gap: 8px;
+  font-size: 11px; padding: 1px 0;
+}
+.kv-label {
+  color: var(--overlay1); font-size: 10px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.3px;
+  min-width: 70px; flex-shrink: 0;
+}
+.kv-value {
+  color: var(--subtext1);
+  font-family: "JetBrains Mono", monospace; font-size: 11px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* Progress bar */
+.progress-bar {
+  flex: 1; height: 6px; background: var(--surface0);
+  border-radius: 3px; overflow: hidden;
+}
+.progress-fill {
+  height: 100%; border-radius: 3px;
+  transition: width 0.3s ease;
+}
+.progress-fill.blue  { background: var(--blue); }
+.progress-fill.green { background: var(--green); }
+
+/* === Animation cards === */
+.anim-card, .timer-card, .indev-card, .group-card, .dtask-card {
+  background: var(--base); border: 1px solid var(--surface0);
+  border-radius: var(--radius-sm); margin-bottom: 6px; overflow: hidden;
+}
+.anim-card:last-child, .timer-card:last-child, .indev-card:last-child,
+.group-card:last-child, .dtask-card:last-child { margin-bottom: 0; }
+
+.anim-header, .timer-header, .indev-header, .group-header, .dtask-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px; border-bottom: 1px solid var(--surface0);
+}
+.anim-info, .timer-info, .indev-info, .group-info, .dtask-info {
+  padding: 6px 10px;
+}
+.anim-value-row {
+  display: flex; align-items: center; gap: 8px;
+  margin: 4px 0;
+}
+.anim-val-label {
+  font-family: "JetBrains Mono", monospace; font-size: 10px;
+  color: var(--overlay1); white-space: nowrap;
+}
+.anim-cur-val {
+  font-size: 10px; color: var(--overlay1); text-align: right;
+}
+
+/* === Input device cards === */
+.indev-type-icon { font-size: 18px; }
+.indev-type-name { font-weight: 600; font-size: 12px; color: var(--text); }
+
+/* === Group cards === */
+.group-members { margin-top: 4px; }
+.member-list {
+  display: flex; flex-wrap: wrap; gap: 4px;
+  font-family: "JetBrains Mono", monospace; font-size: 10px;
+}
+
+/* === Image cache grid === */
+.cache-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 6px;
+}
+.cache-entry {
+  background: var(--base); border: 1px solid var(--surface0);
+  border-radius: var(--radius-sm); overflow: hidden;
+}
+.cache-preview {
+  padding: 8px; display: flex; justify-content: center;
+  background: var(--surface0);
+}
+.cache-preview img {
+  max-width: 100%; max-height: 100px; border-radius: 4px;
+  image-rendering: pixelated;
+}
+.cache-info { padding: 6px 8px; }
+.cache-src {
+  font-size: 11px; color: var(--text); font-weight: 500;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  margin-bottom: 4px;
+}
+.cache-meta-row {
+  display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+}
+.cache-size-label { font-size: 10px; color: var(--overlay1); }
+.cache-decoder-label { font-size: 10px; color: var(--overlay0); margin-top: 2px; }
+
+/* === Unit / Decoder / FS grids === */
+.unit-grid, .decoder-grid, .fs-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 6px;
+}
+.unit-card, .decoder-card, .fs-card {
+  background: var(--base); border: 1px solid var(--surface0);
+  border-radius: var(--radius-sm); padding: 10px; text-align: center;
+}
+.unit-name, .decoder-name {
+  font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 2px;
+}
+.unit-idx { font-size: 18px; font-weight: 700; color: var(--blue); }
+.decoder-cbs { display: flex; gap: 4px; justify-content: center; margin: 6px 0; }
+.fs-letter {
+  font-size: 24px; font-weight: 800; color: var(--blue);
+  font-family: "JetBrains Mono", monospace;
+}
+.fs-driver-name { font-size: 11px; color: var(--subtext0); margin-bottom: 4px; }
+.fs-info { font-size: 11px; }
+.fs-cbs { display: flex; gap: 3px; justify-content: center; margin-top: 4px; }
+
 /* === Empty / Utility === */
 .empty {
   color: var(--overlay0); font-size: 12px; font-style: italic;
@@ -372,10 +494,10 @@ a.xref:hover { color: var(--blue); border-bottom-color: var(--blue); }
 .panel-animations  { grid-column: span 4; grid-row: span 3; }
 .panel-timers      { grid-column: span 4; grid-row: span 3; }
 .panel-indevs      { grid-column: span 4; grid-row: span 3; }
-.panel-img-cache   { grid-column: span 5; grid-row: span 3; }
-.panel-groups      { grid-column: span 3; grid-row: span 3; }
+.panel-img-cache   { grid-column: span 6; grid-row: span 3; }
+.panel-hdr-cache   { grid-column: span 6; grid-row: span 3; }
+.panel-groups      { grid-column: span 4; grid-row: span 3; }
 .panel-draw-units  { grid-column: span 4; grid-row: span 3; }
-.panel-hdr-cache   { grid-column: span 4; grid-row: span 3; }
 .panel-draw-tasks  { grid-column: span 4; grid-row: span 3; }
 .panel-subjects    { grid-column: span 4; grid-row: span 3; }
 .panel-decoders    { grid-column: span 6; grid-row: span 2; }

@@ -241,19 +241,138 @@ function buildSimpleTable(data, key, cls, icon, title, headers, anchorPrefix) {
   return panel;
 }
 
+/* --- Status badge helper --- */
+function badge(text, color) {
+  const b = el("span", "badge badge-" + color, text);
+  return b;
+}
+
+/* --- Key-value pair helper --- */
+function kvPair(label, value) {
+  const row = el("div", "kv-row");
+  row.appendChild(el("span", "kv-label", label));
+  row.appendChild(el("span", "kv-value", String(value)));
+  return row;
+}
+
+/* --- Progress bar helper --- */
+function progressBar(ratio, color) {
+  const wrap = el("div", "progress-bar");
+  const fill = el("div", "progress-fill " + color);
+  fill.style.width = Math.max(0, Math.min(100, ratio * 100)) + "%";
+  wrap.appendChild(fill);
+  return wrap;
+}
+
+/* --- Animations: card-based with progress bar --- */
+function buildAnimations(data) {
+  const items = data.animations || [];
+  const { panel, body } = makePanel("panel-animations", "🎬", "Animations", items.length);
+  if (items.length === 0) { body.appendChild(emptyMsg()); return panel; }
+  items.forEach(a => {
+    const card = el("div", "anim-card");
+    if (a.addr) card.id = "anim-" + a.addr;
+    const hdr = el("div", "anim-header");
+    hdr.appendChild(el("span", "mono-addr", a.addr));
+    const statusColor = a.status === "paused" ? "yellow" : a.status === "reverse" ? "mauve" : "green";
+    hdr.appendChild(badge(a.status || "running", statusColor));
+    card.appendChild(hdr);
+
+    const info = el("div", "anim-info");
+    info.appendChild(kvPair("callback", a.exec_cb || "-"));
+    info.appendChild(kvPair("duration", a.duration + "ms"));
+
+    const range = a.end_value - a.start_value;
+    const ratio = range !== 0 ? (a.current_value - a.start_value) / range : 0;
+    const valRow = el("div", "anim-value-row");
+    valRow.appendChild(el("span", "anim-val-label", String(a.start_value)));
+    valRow.appendChild(progressBar(ratio, "blue"));
+    valRow.appendChild(el("span", "anim-val-label", String(a.end_value)));
+    info.appendChild(valRow);
+    info.appendChild(el("div", "anim-cur-val", "current: " + a.current_value +
+      "  (" + Math.round(ratio * 100) + "%)"));
+
+    const repeat = a.repeat_cnt === 0xFFFFFFFF ? "∞" : String(a.repeat_cnt);
+    info.appendChild(kvPair("repeat", repeat));
+    info.appendChild(kvPair("act_time", a.act_time + "ms"));
+    card.appendChild(info);
+    body.appendChild(card);
+  });
+  return panel;
+}
+
+/* --- Timers: card-based with frequency and status --- */
+function buildTimers(data) {
+  const items = data.timers || [];
+  const { panel, body } = makePanel("panel-timers", "⏱", "Timers", items.length);
+  if (items.length === 0) { body.appendChild(emptyMsg()); return panel; }
+  items.forEach(t => {
+    const card = el("div", "timer-card");
+    if (t.addr) card.id = "timer-" + t.addr;
+    const hdr = el("div", "timer-header");
+    hdr.appendChild(el("span", "mono-addr", t.addr));
+    hdr.appendChild(badge(t.paused ? "paused" : "active", t.paused ? "yellow" : "green"));
+    card.appendChild(hdr);
+    const info = el("div", "timer-info");
+    info.appendChild(kvPair("callback", t.timer_cb || "-"));
+    info.appendChild(kvPair("period", t.period + "ms"));
+    info.appendChild(kvPair("frequency", t.frequency || "-"));
+    const repeat = t.repeat_count === -1 ? "∞" : String(t.repeat_count);
+    info.appendChild(kvPair("repeat", repeat));
+    info.appendChild(kvPair("last_run", String(t.last_run)));
+    card.appendChild(info);
+    body.appendChild(card);
+  });
+  return panel;
+}
+
+/* --- Input Devices: card with type icon and status --- */
+function buildIndevs(data) {
+  const items = data.indevs || [];
+  const { panel, body } = makePanel("panel-indevs", "🕹", "Input Devices", items.length);
+  if (items.length === 0) { body.appendChild(emptyMsg()); return panel; }
+  const INDEV_ICONS = {
+    pointer: "👆", keypad: "⌨️", button: "🔘", encoder: "🎛️", none: "❓"
+  };
+  items.forEach(d => {
+    const card = el("div", "indev-card");
+    if (d.addr) card.id = "indev-" + d.addr;
+    const hdr = el("div", "indev-header");
+    const typeIcon = INDEV_ICONS[d.type_name] || "🕹";
+    hdr.appendChild(el("span", "indev-type-icon", typeIcon));
+    hdr.appendChild(el("span", "indev-type-name", d.type_name || "unknown"));
+    hdr.appendChild(badge(d.enabled ? "enabled" : "disabled", d.enabled ? "green" : "red"));
+    card.appendChild(hdr);
+    const info = el("div", "indev-info");
+    info.appendChild(kvPair("read_cb", d.read_cb || "-"));
+    info.appendChild(kvPair("long_press", d.long_press_time + "ms"));
+    info.appendChild(kvPair("scroll_limit", String(d.scroll_limit)));
+    if (d.display_addr) {
+      const row = el("div", "kv-row");
+      row.appendChild(el("span", "kv-label", "display"));
+      row.appendChild(xref(d.display_addr, "disp"));
+      info.appendChild(row);
+    }
+    if (d.group_addr) {
+      const row = el("div", "kv-row");
+      row.appendChild(el("span", "kv-label", "group"));
+      row.appendChild(xref(d.group_addr, "group"));
+      info.appendChild(row);
+    }
+    card.appendChild(info);
+    body.appendChild(card);
+  });
+  return panel;
+}
+
 function buildImageCache(data) {
   const entries = data.image_cache || [];
   const { panel, body } = makePanel("panel-img-cache", "🖼", "Image Cache", entries.length);
   if (entries.length === 0) { body.appendChild(emptyMsg()); return panel; }
+  const grid = el("div", "cache-grid");
   entries.forEach(e => {
     const card = el("div", "cache-entry");
     if (e.entry_addr) card.id = "imgcache-" + e.entry_addr;
-    const info = el("div", "cache-info");
-    info.appendChild(el("div", "cache-addr", e.entry_addr || ""));
-    info.appendChild(el("div", "cache-detail",
-      e.src + "  " + e.size + "  cf=" + e.cf +
-      "  rc=" + e.ref_count + "  decoder=" + e.decoder_name));
-    card.appendChild(info);
     if (e.preview_base64) {
       const preview = el("div", "cache-preview");
       const img = document.createElement("img");
@@ -262,8 +381,18 @@ function buildImageCache(data) {
       preview.appendChild(img);
       card.appendChild(preview);
     }
-    body.appendChild(card);
+    const info = el("div", "cache-info");
+    info.appendChild(el("div", "cache-src", e.src || "-"));
+    const meta = el("div", "cache-meta-row");
+    meta.appendChild(badge(e.cf || "?", "blue"));
+    meta.appendChild(el("span", "cache-size-label", e.size || ""));
+    meta.appendChild(badge("rc=" + e.ref_count, "teal"));
+    info.appendChild(meta);
+    info.appendChild(el("div", "cache-decoder-label", e.decoder_name || ""));
+    card.appendChild(info);
+    grid.appendChild(card);
   });
+  body.appendChild(grid);
   return panel;
 }
 
@@ -299,6 +428,141 @@ function buildSubjects(data) {
     }
     body.appendChild(card);
   });
+  return panel;
+}
+
+/* --- Groups: card with member count bar and focused highlight --- */
+function buildGroups(data) {
+  const items = data.groups || [];
+  const { panel, body } = makePanel("panel-groups", "👥", "Groups", items.length);
+  if (items.length === 0) { body.appendChild(emptyMsg()); return panel; }
+  items.forEach(g => {
+    const card = el("div", "group-card");
+    if (g.addr) card.id = "group-" + g.addr;
+    const hdr = el("div", "group-header");
+    hdr.appendChild(el("span", "mono-addr", g.addr));
+    hdr.appendChild(badge(g.obj_count + " objects", "blue"));
+    if (g.frozen) hdr.appendChild(badge("frozen", "yellow"));
+    if (g.editing) hdr.appendChild(badge("editing", "peach"));
+    card.appendChild(hdr);
+    const info = el("div", "group-info");
+    info.appendChild(kvPair("wrap", String(g.wrap)));
+    if (g.focused_addr) {
+      const row = el("div", "kv-row");
+      row.appendChild(el("span", "kv-label", "focused"));
+      row.appendChild(xref(g.focused_addr, "obj"));
+      info.appendChild(row);
+    }
+    if (g.member_addrs && g.member_addrs.length > 0) {
+      const mRow = el("div", "group-members");
+      mRow.appendChild(el("span", "kv-label", "members"));
+      const mList = el("div", "member-list");
+      g.member_addrs.forEach(a => {
+        mList.appendChild(xref(a, "obj"));
+      });
+      mRow.appendChild(mList);
+      info.appendChild(mRow);
+    }
+    card.appendChild(info);
+    body.appendChild(card);
+  });
+  return panel;
+}
+
+/* --- Draw Tasks: card with area visualization --- */
+function buildDrawTasks(data) {
+  const items = data.draw_tasks || [];
+  const { panel, body } = makePanel("panel-draw-tasks", "📝", "Draw Tasks", items.length);
+  if (items.length === 0) { body.appendChild(emptyMsg()); return panel; }
+  items.forEach(t => {
+    const card = el("div", "dtask-card");
+    if (t.addr) card.id = "drawtask-" + t.addr;
+    const hdr = el("div", "dtask-header");
+    hdr.appendChild(el("span", "mono-addr", t.addr));
+    hdr.appendChild(badge(t.type_name || "?", "blue"));
+    const stateColor = t.state_name === "ready" ? "green" : t.state_name === "queued" ? "yellow" : "mauve";
+    hdr.appendChild(badge(t.state_name || "?", stateColor));
+    card.appendChild(hdr);
+    const info = el("div", "dtask-info");
+    if (t.area) {
+      const a = t.area;
+      const w = a.x2 - a.x1; const h = a.y2 - a.y1;
+      info.appendChild(kvPair("area", "(" + a.x1 + "," + a.y1 + ") → (" + a.x2 + "," + a.y2 + ")"));
+      info.appendChild(kvPair("size", w + " × " + h));
+    }
+    info.appendChild(kvPair("opacity", t.opa));
+    if (t.preferred_draw_unit_id !== undefined) {
+      info.appendChild(kvPair("unit_id", t.preferred_draw_unit_id));
+    }
+    card.appendChild(info);
+    body.appendChild(card);
+  });
+  return panel;
+}
+
+/* --- Draw Units: simple card --- */
+function buildDrawUnits(data) {
+  const items = data.draw_units || [];
+  const { panel, body } = makePanel("panel-draw-units", "🎨", "Draw Units", items.length);
+  if (items.length === 0) { body.appendChild(emptyMsg()); return panel; }
+  const grid = el("div", "unit-grid");
+  items.forEach(u => {
+    const card = el("div", "unit-card");
+    if (u.addr) card.id = "drawunit-" + u.addr;
+    card.appendChild(el("div", "unit-name", u.name || "(unnamed)"));
+    card.appendChild(el("div", "unit-idx", "#" + u.idx));
+    card.appendChild(el("div", "mono-addr", u.addr));
+    grid.appendChild(card);
+  });
+  body.appendChild(grid);
+  return panel;
+}
+
+/* --- Image Decoders: card grid --- */
+function buildDecoders(data) {
+  const items = data.image_decoders || [];
+  const { panel, body } = makePanel("panel-decoders", "🔓", "Decoders", items.length);
+  if (items.length === 0) { body.appendChild(emptyMsg()); return panel; }
+  const grid = el("div", "decoder-grid");
+  items.forEach(d => {
+    const card = el("div", "decoder-card");
+    if (d.addr) card.id = "decoder-" + d.addr;
+    card.appendChild(el("div", "decoder-name", d.name || "(unnamed)"));
+    const cbs = el("div", "decoder-cbs");
+    if (d.info_cb && d.info_cb !== "-") cbs.appendChild(badge("info", "blue"));
+    if (d.open_cb && d.open_cb !== "-") cbs.appendChild(badge("open", "green"));
+    if (d.close_cb && d.close_cb !== "-") cbs.appendChild(badge("close", "peach"));
+    card.appendChild(cbs);
+    card.appendChild(el("div", "mono-addr", d.addr));
+    grid.appendChild(card);
+  });
+  body.appendChild(grid);
+  return panel;
+}
+
+/* --- FS Drivers: card with drive letter badge --- */
+function buildFsDrivers(data) {
+  const items = data.fs_drivers || [];
+  const { panel, body } = makePanel("panel-fs-drivers", "💾", "FS Drivers", items.length);
+  if (items.length === 0) { body.appendChild(emptyMsg()); return panel; }
+  const grid = el("div", "fs-grid");
+  items.forEach(d => {
+    const card = el("div", "fs-card");
+    if (d.addr) card.id = "fsdrv-" + d.addr;
+    card.appendChild(el("div", "fs-letter", d.letter + ":"));
+    card.appendChild(el("div", "fs-driver-name", d.driver_name || "(unnamed)"));
+    const info = el("div", "fs-info");
+    info.appendChild(kvPair("cache", d.cache_size));
+    const cbs = el("div", "fs-cbs");
+    if (d.open_cb && d.open_cb !== "-") cbs.appendChild(badge("open", "green"));
+    if (d.read_cb && d.read_cb !== "-") cbs.appendChild(badge("read", "blue"));
+    if (d.write_cb && d.write_cb !== "-") cbs.appendChild(badge("write", "peach"));
+    if (d.close_cb && d.close_cb !== "-") cbs.appendChild(badge("close", "mauve"));
+    info.appendChild(cbs);
+    card.appendChild(info);
+    grid.appendChild(card);
+  });
+  body.appendChild(grid);
   return panel;
 }
 
@@ -343,35 +607,22 @@ function renderDashboard(data) {
   grid.appendChild(buildDisplays(data));
   grid.appendChild(buildObjectTrees(data));
 
-  grid.appendChild(buildSimpleTable(data, "animations", "panel-animations", "🎬", "Animations",
-    ["addr","var","exec_cb","start_value","current_value","end_value",
-     "duration","act_time","repeat_cnt","status","var_addr"], "anim"));
-  grid.appendChild(buildSimpleTable(data, "timers", "panel-timers", "⏱", "Timers",
-    ["addr","timer_cb","period","frequency","last_run","repeat_count",
-     "paused","user_data_addr"], "timer"));
-  grid.appendChild(buildSimpleTable(data, "indevs", "panel-indevs", "🕹", "Input Devices",
-    ["addr","type_name","enabled","read_cb","long_press_time","scroll_limit",
-     "display_addr","group_addr","read_timer_addr"], "indev"));
+  grid.appendChild(buildAnimations(data));
+  grid.appendChild(buildTimers(data));
+  grid.appendChild(buildIndevs(data));
 
   grid.appendChild(buildImageCache(data));
-  grid.appendChild(buildSimpleTable(data, "groups", "panel-groups", "👥", "Groups",
-    ["addr","obj_count","frozen","editing","wrap","focused_addr","member_addrs"], "group"));
-  grid.appendChild(buildSimpleTable(data, "draw_units", "panel-draw-units", "🎨", "Draw Units",
-    ["addr","name","idx"], "drawunit"));
-
   grid.appendChild(buildSimpleTable(data, "image_header_cache",
     "panel-hdr-cache", "📋", "Header Cache",
     ["entry_addr","src","size","cf","ref_count","src_type","decoder_name"], "imghdr"));
-  grid.appendChild(buildSimpleTable(data, "draw_tasks", "panel-draw-tasks", "📝", "Draw Tasks",
-    ["addr","type_name","state_name","area","opa","preferred_draw_unit_id"], "drawtask"));
+  grid.appendChild(buildGroups(data));
+
+  grid.appendChild(buildDrawUnits(data));
+  grid.appendChild(buildDrawTasks(data));
   grid.appendChild(buildSubjects(data));
 
-  grid.appendChild(buildSimpleTable(data, "image_decoders",
-    "panel-decoders", "🔓", "Decoders",
-    ["addr","name","info_cb","open_cb","close_cb"], "decoder"));
-  grid.appendChild(buildSimpleTable(data, "fs_drivers", "panel-fs-drivers", "💾", "FS Drivers",
-    ["addr","letter","driver_name","cache_size","open_cb","read_cb",
-     "write_cb","close_cb"], "fsdrv"));
+  grid.appendChild(buildDecoders(data));
+  grid.appendChild(buildFsDrivers(data));
 }
 
 /* --- Boot logic --- */
