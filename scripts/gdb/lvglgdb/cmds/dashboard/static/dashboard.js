@@ -325,7 +325,8 @@ function build3DScene(container, trees, displays, dispObjs) {
   let screenIdx = 0;
   trees.forEach(t => (t.screens || []).forEach(s => {
     const idx = screenIdx++;
-    screenNames.push(s.class_name || "screen_" + idx);
+    const layerName = s.layer_name || s.class_name || "screen_" + idx;
+    screenNames.push(layerName);
     function flatten(obj, localDepth) {
       const c = obj.coords || {};
       layers.push({
@@ -419,8 +420,10 @@ function build3DScene(container, trees, displays, dispObjs) {
   const layerBtns = [];
   const layerVisible = [];
   screenNames.forEach((name, i) => {
-    layerVisible.push(true);
-    const btn = el("button", "scene-layer-btn active", name);
+    /* Default: only act_scr visible */
+    const defaultOn = name === "act_scr" || screenNames.length === 1;
+    layerVisible.push(defaultOn);
+    const btn = el("button", "scene-layer-btn" + (defaultOn ? " active" : ""), name);
     btn.style.borderLeftColor = DEPTH_COLORS[i % DEPTH_COLORS.length];
     btn.dataset.idx = String(i);
 
@@ -449,7 +452,7 @@ function build3DScene(container, trees, displays, dispObjs) {
     layerBtns.push(btn);
     layerBar.appendChild(btn);
   });
-  if (screenNames.length > 1) container.appendChild(layerBar);
+  if (screenNames.length > 0) container.appendChild(layerBar);
 
   /* Tooltip */
   const tooltip = el("div", "scene-tooltip");
@@ -554,7 +557,7 @@ function build3DScene(container, trees, displays, dispObjs) {
       offset += (screenMaxLocal[idx] || 0) + 2;
     });
 
-    const spread = Number(spreadSlider.value);
+    const spread = is3d ? Number(spreadSlider.value) : 0;
     layerEls.forEach(le => {
       if (!bordersOn || !layerVisible[le.screenIdx]) {
         le.el.style.display = "none";
@@ -567,25 +570,40 @@ function build3DScene(container, trees, displays, dispObjs) {
     if (bufLayer) bufLayer.style.transform = "translateZ(" + (-spread * 1.5) + "px)";
   }
 
-  /* Apply Z spread using current visibility state */
-  function applySpread(spread) {
+  /* Interaction state: rotation, zoom, pan */
+  let rotX = -30, rotY = 30, dragging = false, lastX = 0, lastY = 0;
+  let is3d = true;
+  let zoom = 1, panX = 0, panY = 0;
+
+  /* Convenience wrapper */
+  function applySpread() {
     applyLayerVisibility();
   }
   applyLayerVisibility();
 
   spreadSlider.addEventListener("input", () => {
-    applySpread(Number(spreadSlider.value));
+    applySpread();
   });
 
-  /* Drag rotation state */
-  let rotX = -30, rotY = 30, dragging = false, lastX = 0, lastY = 0;
-  let is3d = true;
+  /* Clamp pan: allow panning only when zoomed in, limit to visible overflow */
+  function clampPan() {
+    if (zoom <= 1) { panX = 0; panY = 0; return; }
+    const w = viewport.offsetWidth;
+    const h = viewport.offsetHeight;
+    const maxPanX = w * (zoom - 1) / 2;
+    const maxPanY = h * (zoom - 1) / 2;
+    panX = Math.max(-maxPanX, Math.min(maxPanX, panX));
+    panY = Math.max(-maxPanY, Math.min(maxPanY, panY));
+  }
 
   function applyRotation() {
+    clampPan();
+    /* Zoom and pan applied on scene so viewport clips overflow */
+    const base = "translate(-50%, -50%) scale(" + zoom + ") translate(" + (panX / zoom) + "px," + (panY / zoom) + "px)";
     if (is3d) {
-      scene.style.transform = "translate(-50%, -50%) rotateX(" + rotX + "deg) rotateY(" + rotY + "deg)";
+      scene.style.transform = base + " rotateX(" + rotX + "deg) rotateY(" + rotY + "deg)";
     } else {
-      scene.style.transform = "translate(-50%, -50%)";
+      scene.style.transform = base;
     }
   }
   applyRotation();
@@ -593,29 +611,10 @@ function build3DScene(container, trees, displays, dispObjs) {
   /* Toggle handlers */
   toggle3d.addEventListener("click", () => {
     is3d = toggle3d.dataset.on === "1";
-    if (!is3d) {
-      applySpread(0);
-      spreadSlider.disabled = true;
-    } else {
-      applySpread(Number(spreadSlider.value));
-      spreadSlider.disabled = false;
-    }
+    spreadSlider.disabled = !is3d;
+    applyLayerVisibility();
     applyRotation();
   });
-
-  toggleBorders.addEventListener("click", () => {
-    const show = toggleBorders.dataset.on === "1";
-    layerEls.forEach(le => {
-      le.el.style.display = (show && layerVisible[le.screenIdx]) ? "" : "none";
-    });
-  });
-
-  if (bufBase64) {
-    toggleBuf.addEventListener("click", () => {
-      const show = toggleBuf.dataset.on === "1";
-      if (bufLayer) bufLayer.style.display = show ? "" : "none";
-    });
-  }
 
   toggleBorders.addEventListener("click", () => { applyLayerVisibility(); });
 
@@ -627,21 +626,49 @@ function build3DScene(container, trees, displays, dispObjs) {
   }
 
   viewport.addEventListener("mousedown", e => {
-    if (!is3d) return;
-    dragging = true; lastX = e.clientX; lastY = e.clientY;
-    viewport.style.cursor = "grabbing";
+    if (e.button === 1 || (e.button === 0 && e.shiftKey)) {
+      /* Middle-click or shift+left-click: pan */
+      e.preventDefault();
+      dragging = "pan"; lastX = e.clientX; lastY = e.clientY;
+      viewport.style.cursor = "move";
+    } else if (e.button === 0 && is3d) {
+      /* Left-click: rotate (3D only) */
+      dragging = "rotate"; lastX = e.clientX; lastY = e.clientY;
+      viewport.style.cursor = "grabbing";
+    }
   });
   window.addEventListener("mousemove", e => {
     if (!dragging) return;
-    rotY += (e.clientX - lastX) * 0.4;
-    rotX -= (e.clientY - lastY) * 0.4;
-    rotX = Math.max(-90, Math.min(90, rotX));
+    const dx = e.clientX - lastX, dy = e.clientY - lastY;
     lastX = e.clientX; lastY = e.clientY;
+    if (dragging === "rotate") {
+      rotY += dx * 0.4;
+      rotX -= dy * 0.4;
+      rotX = Math.max(-90, Math.min(90, rotX));
+    } else if (dragging === "pan") {
+      panX += dx / zoom;
+      panY += dy / zoom;
+    }
     applyRotation();
   });
   window.addEventListener("mouseup", () => {
     dragging = false; viewport.style.cursor = "grab";
   });
+
+  /* Wheel: pinch-to-zoom (ctrl+wheel / trackpad pinch) and pan (two-finger scroll) */
+  viewport.addEventListener("wheel", e => {
+    e.preventDefault();
+    if (e.ctrlKey) {
+      /* Pinch zoom (trackpad) or ctrl+scroll (mouse) */
+      const factor = 1 - e.deltaY * 0.01;
+      zoom = Math.max(0.2, Math.min(10, zoom * factor));
+    } else {
+      /* Two-finger pan (trackpad) or scroll wheel pan */
+      panX -= e.deltaX / zoom;
+      panY -= e.deltaY / zoom;
+    }
+    applyRotation();
+  }, { passive: false });
 
   /* Hover: linked highlight + tooltip */
   scene.addEventListener("mouseover", e => {
@@ -682,6 +709,7 @@ function build3DScene(container, trees, displays, dispObjs) {
   /* Reset button */
   resetBtn.addEventListener("click", () => {
     rotX = -30; rotY = 30;
+    zoom = 1; panX = 0; panY = 0;
     spreadSlider.value = String(defaultSpread);
     spreadSlider.disabled = false;
     is3d = true;
@@ -689,11 +717,13 @@ function build3DScene(container, trees, displays, dispObjs) {
     toggleBorders.dataset.on = "1"; toggleBorders.classList.add("active");
     if (toggleBuf) { toggleBuf.dataset.on = bufBase64 ? "1" : "0"; toggleBuf.classList.toggle("active", !!bufBase64); }
     layerEls.forEach(le => { le.el.style.display = ""; });
-    layerVisible.fill(true);
-    layerBtns.forEach(b => b.classList.add("active"));
+    screenNames.forEach((name, i) => {
+      layerVisible[i] = name === "act_scr" || screenNames.length === 1;
+    });
+    layerBtns.forEach((b, i) => b.classList.toggle("active", layerVisible[i]));
     if (bufLayer) bufLayer.style.display = bufBase64 ? "" : "none";
     applyRotation();
-    applySpread(defaultSpread);
+    applySpread();
   });
 }
 

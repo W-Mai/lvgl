@@ -374,7 +374,7 @@ a.xref:hover { color: var(--blue); border-bottom-color: var(--blue); }
   width: 100%; flex: 1; min-height: 400px; perspective: 1200px;
   overflow: hidden; cursor: grab; border-radius: var(--radius-sm);
   background: var(--crust); border: 1px solid var(--surface0);
-  position: relative;
+  position: relative; transform-origin: center center;
 }
 .scene-3d {
   position: absolute; top: 50%; left: 50%;

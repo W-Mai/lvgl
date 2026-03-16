@@ -87,10 +87,20 @@ def _collect_displays(lvgl) -> list:
 
 
 def _collect_object_trees(lvgl) -> list:
-    """Collect object trees for all displays."""
+    """Collect object trees for all displays with layer name annotations."""
     result = []
     try:
         for disp in lvgl.displays():
+            # Read special layer pointers for name annotation
+            layer_addrs = {}
+            for name in ("bottom_layer", "act_scr", "top_layer", "sys_layer"):
+                try:
+                    ptr = disp.super_value(name)
+                    if int(ptr):
+                        layer_addrs[int(ptr)] = name
+                except Exception:
+                    pass
+
             tree = {
                 "display_addr": hex(int(disp)),
                 "screens": [],
@@ -99,6 +109,9 @@ def _collect_object_trees(lvgl) -> list:
                 snap = screen.snapshot(
                     include_children=True, include_styles=True
                 ).as_dict()
+                # Annotate with layer name if this screen is a known layer
+                screen_addr = int(screen)
+                snap["layer_name"] = layer_addrs.get(screen_addr)
                 tree["screens"].append(snap)
             result.append(tree)
     except Exception as e:
