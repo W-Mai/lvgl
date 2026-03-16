@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LVGL Dashboard</title>
+<style>
+{{CSS}}
+</style>
+</head>
+<body>
+<nav id="sidebar">
+<h2>LVGL Dashboard</h2>
+<input type="text" id="search" placeholder="Search..." aria-label="Search">
+<ul>
+<li><a href="#sec-displays">Displays</a></li>
+<li><a href="#sec-object-trees">Object Trees</a></li>
+<li><a href="#sec-animations">Animations</a></li>
+<li><a href="#sec-timers">Timers</a></li>
+<li><a href="#sec-image-cache">Image Cache</a></li>
+<li><a href="#sec-image-header-cache">Image Header Cache</a></li>
+<li><a href="#sec-indevs">Input Devices</a></li>
+<li><a href="#sec-groups">Groups</a></li>
+<li><a href="#sec-draw-units">Draw Units</a></li>
+<li><a href="#sec-draw-tasks">Draw Tasks</a></li>
+<li><a href="#sec-subjects">Subjects</a></li>
+<li><a href="#sec-image-decoders">Image Decoders</a></li>
+<li><a href="#sec-fs-drivers">FS Drivers</a></li>
+</ul>
+</nav>
+<main id="content">
+<div id="header-bar"></div>
+<div id="drop-zone" style="display:none">
+<p>Drag &amp; drop a JSON file here, or click to select</p>
+<input type="file" id="file-input" accept=".json" aria-label="Load JSON file">
+</div>
+<div id="dashboard"></div>
+</main>
+<script type="application/json" id="lvgl-data">{{JSON_DATA}}</script>
+<script>
+{{JS}}
+</script>
+</body>
+</html>
