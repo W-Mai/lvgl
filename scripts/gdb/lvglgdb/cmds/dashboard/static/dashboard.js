@@ -11,8 +11,7 @@ const XREF_TARGET = {
 
 /* Section registry: key, icon, title, panelClass, color accent */
 const SECTIONS = [
-  { key: "displays",           icon: "🖥", title: "Displays",           cls: "panel-displays" },
-  { key: "object_trees",       icon: "🌳", title: "Object Trees",       cls: "panel-obj-trees" },
+  { key: "displays",           icon: "🖥", title: "Displays & Objects",  cls: "panel-disp-trees" },
   { key: "animations",         icon: "🎬", title: "Animations",         cls: "panel-animations" },
   { key: "timers",             icon: "⏱",  title: "Timers",             cls: "panel-timers" },
   { key: "image_cache",        icon: "🖼", title: "Image Cache",        cls: "panel-img-cache" },
@@ -157,11 +156,13 @@ function makeTable(headers, rows, anchorPrefix) {
 }
 
 /* --- Object tree rendering --- */
-function renderObjTree(obj) {
+function renderObjTree(obj, depth) {
+  if (depth === undefined) depth = 0;
   const det = document.createElement("details");
   det.className = "obj-node";
   if (obj.addr) det.id = "obj-" + obj.addr;
   const sum = document.createElement("summary");
+  sum.style.borderLeftColor = DEPTH_COLORS[depth % DEPTH_COLORS.length];
   const c = obj.coords || {};
   sum.textContent = (obj.class_name || "obj") + "@" + (obj.addr || "?") +
     "  [" + (c.x1||0) + "," + (c.y1||0) + "," + (c.x2||0) + "," + (c.y2||0) + "]" +
@@ -208,12 +209,18 @@ function renderObjTree(obj) {
     });
     det.appendChild(sp);
   }
-  if (obj.children) obj.children.forEach(ch => det.appendChild(renderObjTree(ch)));
+  if (obj.children) obj.children.forEach(ch => det.appendChild(renderObjTree(ch, depth + 1)));
   return det;
 }
 
-/* --- Panel factory --- */
-function makePanel(cls, icon, title, count) {
+/* --- Depth color palette shared by 3D scene and tree view --- */
+const DEPTH_COLORS = [
+  "var(--blue)", "var(--green)", "var(--mauve)", "var(--peach)",
+  "var(--teal)", "var(--pink)", "var(--yellow)", "var(--red)",
+  "var(--sapphire)", "var(--lavender)", "var(--flamingo)",
+];
+
+/* --- Panel factory --- */function makePanel(cls, icon, title, count) {
   const panel = el("div", "panel " + cls);
   panel.id = "sec-" + cls.replace("panel-", "");
   const hdr = el("div", "panel-header");
@@ -245,14 +252,16 @@ function makeStatPanel(icon, label, value, colorClass) {
 }
 
 /* --- Section builders --- */
-function buildDisplays(data) {
-  const items = data.displays || [];
-  const { panel, body } = makePanel("panel-displays", "🖥", "Displays", items.length);
-  if (items.length === 0) { body.appendChild(emptyMsg()); return panel; }
+function buildDisplayAndTrees(data) {
+  const displays = data.displays || [];
+  const trees = data.object_trees || [];
+  const screenCount = trees.reduce((n, t) => n + (t.screens ? t.screens.length : 0), 0);
+  const totalCount = displays.length + screenCount;
+  const { panel, body } = makePanel("panel-disp-trees", "🖥", "Displays & Objects", totalCount);
 
-  /* Collect all obj coords per display for overlay */
+  /* Collect all obj coords per display for overlay highlight in 3D scene */
   const dispObjs = {};
-  (data.object_trees || []).forEach(tree => {
+  trees.forEach(tree => {
     const objs = [];
     function walk(obj) {
       const c = obj.coords || {};
@@ -263,89 +272,88 @@ function buildDisplays(data) {
     dispObjs[tree.display_addr] = objs;
   });
 
-  items.forEach(d => {
-    const card = el("div", "display-card");
-    if (d.addr) card.id = "disp-" + d.addr;
-    const hdr = el("div", "disp-header");
-    hdr.appendChild(el("span", "disp-addr", d.addr || ""));
-    hdr.appendChild(el("span", "disp-res", d.hor_res + " × " + d.ver_res));
-    hdr.appendChild(el("span", "disp-screens", d.screen_count + " screens"));
-    card.appendChild(hdr);
-    const bufRow = el("div", "buf-row");
-    ["buf_1", "buf_2"].forEach(bk => {
-      const b = d[bk]; if (!b) return;
-      const bc = el("div", "buf-card");
-      bc.appendChild(el("div", "buf-label", bk.replace("_", " ")));
-      bc.appendChild(el("div", "buf-info", b.width + "×" + b.height + "  " + b.color_format));
-      if (b.image_base64) {
-        const wrap = el("div", "buf-img-wrap");
-        const img = document.createElement("img");
-        img.className = "buf-img";
-        img.src = "data:image/png;base64," + b.image_base64;
-        img.alt = bk + " " + b.width + "x" + b.height;
-        wrap.appendChild(img);
-        /* Overlay canvas for highlight rectangles */
-        const canvas = document.createElement("canvas");
-        canvas.className = "buf-overlay";
-        canvas.width = b.width; canvas.height = b.height;
-        wrap.appendChild(canvas);
-        bc.appendChild(wrap);
-        /* Register overlay for this display */
-        if (d.addr && dispObjs[d.addr]) {
-          _hlOverlays[d.addr + "-" + bk] = {
-            canvas: canvas, w: d.hor_res, h: d.ver_res,
-            objs: dispObjs[d.addr],
-          };
-        }
-      }
-      bufRow.appendChild(bc);
+  /* Display info bar: compact inline summary per display */
+  if (displays.length > 0) {
+    const infoBar = el("div", "disp-info-bar");
+    displays.forEach(d => {
+      const chip = el("div", "disp-chip");
+      if (d.addr) chip.id = "disp-" + d.addr;
+      chip.appendChild(el("span", "disp-addr", d.addr || ""));
+      chip.appendChild(el("span", "disp-res", d.hor_res + " × " + d.ver_res));
+      chip.appendChild(el("span", "disp-screens", d.screen_count + " screens"));
+      /* Buffer format tags */
+      ["buf_1", "buf_2"].forEach(bk => {
+        const b = d[bk]; if (!b) return;
+        chip.appendChild(badge(bk.replace("_", " ") + " " + b.width + "×" + b.height + " " + b.color_format, "blue"));
+      });
+      infoBar.appendChild(chip);
     });
-    card.appendChild(bufRow);
-    body.appendChild(card);
-  });
-  return panel;
-}
+    body.appendChild(infoBar);
+  }
 
-function buildObjectTrees(data) {
-  const trees = data.object_trees || [];
-  const screenCount = trees.reduce((n, t) => n + (t.screens ? t.screens.length : 0), 0);
-  const { panel, body } = makePanel("panel-obj-trees", "🌳", "Object Trees", screenCount);
-  if (trees.length === 0) { body.appendChild(emptyMsg()); return panel; }
+  /* Unified view: 3D (left) + tree (right) */
+  if (trees.length > 0 || displays.length > 0) {
+    const split = el("div", "obj-split");
 
-  const split = el("div", "obj-split");
+    const view3d = el("div", "obj-3d-view");
+    build3DScene(view3d, trees, displays, dispObjs);
+    split.appendChild(view3d);
 
-  /* 3D view (left) */
-  const view3d = el("div", "obj-3d-view");
-  build3DScene(view3d, trees);
-  split.appendChild(view3d);
+    const treeView = el("div", "obj-tree-view");
+    trees.forEach(tree => {
+      treeView.appendChild(el("div", "disp-addr", "Display: " + tree.display_addr));
+      tree.screens.forEach(s => treeView.appendChild(renderObjTree(s)));
+    });
+    split.appendChild(treeView);
 
-  /* Tree view (right) */
-  const treeView = el("div", "obj-tree-view");
-  trees.forEach(tree => {
-    treeView.appendChild(el("div", "disp-addr", "Display: " + tree.display_addr));
-    tree.screens.forEach(s => treeView.appendChild(renderObjTree(s)));
-  });
-  split.appendChild(treeView);
+    body.appendChild(split);
+  }
 
-  body.appendChild(split);
+  if (displays.length === 0 && trees.length === 0) {
+    body.appendChild(emptyMsg());
+  }
+
   return panel;
 }
 
 /* --- 3D Exploded Object Tree View --- */
-function build3DScene(container, trees) {
-  /* Flatten all objects with depth and coords */
+function build3DScene(container, trees, displays, dispObjs) {
+  /* Flatten all objects with global depth across screens */
   const layers = [];
-  function flatten(obj, depth) {
-    const c = obj.coords || {};
-    layers.push({
-      addr: obj.addr, class_name: obj.class_name || "obj",
-      x1: c.x1 || 0, y1: c.y1 || 0, x2: c.x2 || 0, y2: c.y2 || 0,
-      depth: depth, child_count: obj.child_count || 0,
-      style_count: obj.style_count || 0,
-    });
-    if (obj.children) obj.children.forEach(ch => flatten(ch, depth + 1));
-  }
-  trees.forEach(t => (t.screens || []).forEach(s => flatten(s, 0)));
+  const screenNames = [];
+  let globalDepthOffset = 0;
+  let screenIdx = 0;
+  trees.forEach(t => (t.screens || []).forEach(s => {
+    const idx = screenIdx++;
+    screenNames.push(s.class_name || "screen_" + idx);
+    function flatten(obj, localDepth) {
+      const c = obj.coords || {};
+      layers.push({
+        addr: obj.addr, class_name: obj.class_name || "obj",
+        x1: c.x1 || 0, y1: c.y1 || 0, x2: c.x2 || 0, y2: c.y2 || 0,
+        depth: globalDepthOffset + localDepth,
+        localDepth: localDepth,
+        child_count: obj.child_count || 0,
+        style_count: obj.style_count || 0,
+        screenIdx: idx,
+      });
+      if (obj.children) obj.children.forEach(ch => flatten(ch, localDepth + 1));
+    }
+    flatten(s, 0);
+    /* Find max local depth in this screen subtree */
+    let maxLocal = 0;
+    function findMax(obj, d) { maxLocal = Math.max(maxLocal, d); if (obj.children) obj.children.forEach(ch => findMax(ch, d + 1)); }
+    findMax(s, 0);
+    globalDepthOffset += maxLocal + 2; /* +2 gap between screens */
+  }));
+
+  /* Compute max local depth per screen for relayout */
+  const screenMaxLocal = {};
+  layers.forEach(l => {
+    if (!(l.screenIdx in screenMaxLocal) || l.localDepth > screenMaxLocal[l.screenIdx]) {
+      screenMaxLocal[l.screenIdx] = l.localDepth;
+    }
+  });
 
   if (layers.length === 0) { container.appendChild(emptyMsg()); return; }
 
@@ -359,18 +367,89 @@ function build3DScene(container, trees) {
   const sceneW = maxX - minX || 1;
   const sceneH = maxY - minY || 1;
 
+  /* Find first display buffer image */
+  let bufBase64 = null;
+  (displays || []).forEach(d => {
+    if (bufBase64) return;
+    ["buf_1", "buf_2"].forEach(bk => {
+      if (bufBase64) return;
+      const b = d[bk];
+      if (b && b.image_base64) bufBase64 = b.image_base64;
+    });
+  });
+
   /* Controls bar */
   const controls = el("div", "scene-controls");
+
+  const make3dToggle = (label, defaultOn) => {
+    const btn = el("button", "scene-toggle-btn" + (defaultOn ? " active" : ""), label);
+    btn.dataset.on = defaultOn ? "1" : "0";
+    btn.addEventListener("click", () => {
+      const on = btn.dataset.on === "1";
+      btn.dataset.on = on ? "0" : "1";
+      btn.classList.toggle("active", !on);
+    });
+    return btn;
+  };
+
+  const toggle3d = make3dToggle("3D", true);
+  const toggleBorders = make3dToggle("Borders", true);
+  const toggleBuf = make3dToggle("Buffer", !!bufBase64);
+  controls.appendChild(toggle3d);
+  controls.appendChild(toggleBorders);
+  if (bufBase64) controls.appendChild(toggleBuf);
+
+  /* Dynamic spread range based on total depth levels */
+  const defaultSpread = maxDepth > 0 ? Math.round(300 / maxDepth) : 30;
+  const maxSpread = defaultSpread * 3;
+
   const spreadLabel = el("label", "scene-label", "Z Spread");
   const spreadSlider = document.createElement("input");
-  spreadSlider.type = "range"; spreadSlider.min = "0"; spreadSlider.max = "200";
-  spreadSlider.value = "60"; spreadSlider.className = "scene-slider";
+  spreadSlider.type = "range"; spreadSlider.min = "0"; spreadSlider.max = String(maxSpread);
+  spreadSlider.value = String(defaultSpread); spreadSlider.className = "scene-slider";
   spreadSlider.setAttribute("aria-label", "Z axis spread");
   controls.appendChild(spreadLabel);
   controls.appendChild(spreadSlider);
   const resetBtn = el("button", "scene-reset-btn", "Reset");
   controls.appendChild(resetBtn);
   container.appendChild(controls);
+
+  /* Layer filter controls */
+  const layerBar = el("div", "scene-layer-bar");
+  const layerBtns = [];
+  const layerVisible = [];
+  screenNames.forEach((name, i) => {
+    layerVisible.push(true);
+    const btn = el("button", "scene-layer-btn active", name);
+    btn.style.borderLeftColor = DEPTH_COLORS[i % DEPTH_COLORS.length];
+    btn.dataset.idx = String(i);
+
+    /* Single click: toggle visibility */
+    btn.addEventListener("click", () => {
+      layerVisible[i] = !layerVisible[i];
+      btn.classList.toggle("active", layerVisible[i]);
+      applyLayerVisibility();
+    });
+
+    /* Double click: solo mode (show only this layer) */
+    btn.addEventListener("dblclick", e => {
+      e.preventDefault();
+      const allVisible = layerVisible.every((v, j) => j === i ? v : !v);
+      if (allVisible) {
+        /* Already solo — restore all */
+        layerVisible.fill(true);
+      } else {
+        layerVisible.fill(false);
+        layerVisible[i] = true;
+      }
+      layerBtns.forEach((b, j) => b.classList.toggle("active", layerVisible[j]));
+      applyLayerVisibility();
+    });
+
+    layerBtns.push(btn);
+    layerBar.appendChild(btn);
+  });
+  if (screenNames.length > 1) container.appendChild(layerBar);
 
   /* Tooltip */
   const tooltip = el("div", "scene-tooltip");
@@ -382,23 +461,60 @@ function build3DScene(container, trees) {
   viewport.appendChild(scene);
   container.appendChild(viewport);
 
-  /* Color palette per depth */
-  const COLORS = [
-    "var(--blue)", "var(--green)", "var(--mauve)", "var(--peach)",
-    "var(--teal)", "var(--pink)", "var(--yellow)", "var(--red)",
-    "var(--sapphire)", "var(--lavender)", "var(--flamingo)",
-  ];
-
   /* Scale factor: fit scene into viewport */
-  const VIEWPORT_SIZE = 400;
+  const VIEWPORT_SIZE = 520;
   const scale = VIEWPORT_SIZE / Math.max(sceneW, sceneH);
-
-  /* Build layer divs */
   const sceneScaledW = sceneW * scale;
   const sceneScaledH = sceneH * scale;
   scene.style.width = sceneScaledW + "px";
   scene.style.height = sceneScaledH + "px";
 
+  /* Buffer image as bottom layer (depth 0, behind all borders) */
+  let bufLayer = null;
+  if (bufBase64) {
+    bufLayer = el("div", "scene-buf-layer");
+    bufLayer.style.width = sceneScaledW + "px";
+    bufLayer.style.height = sceneScaledH + "px";
+    bufLayer.style.left = "0px";
+    bufLayer.style.top = "0px";
+    const img = document.createElement("img");
+    img.src = "data:image/png;base64," + bufBase64;
+    img.style.width = "100%"; img.style.height = "100%";
+    img.style.objectFit = "fill";
+    img.draggable = false;
+    bufLayer.appendChild(img);
+    /* Overlay canvas for highlight rectangles on buffer */
+    const bufCanvas = document.createElement("canvas");
+    bufCanvas.className = "scene-buf-overlay";
+    bufCanvas.width = sceneScaledW; bufCanvas.height = sceneScaledH;
+    bufLayer.appendChild(bufCanvas);
+    scene.appendChild(bufLayer);
+    /* Register overlay for linked highlight system */
+    if (dispObjs) {
+      Object.keys(dispObjs).forEach(dAddr => {
+        _hlOverlays[dAddr + "-3d"] = {
+          canvas: bufCanvas, w: sceneW / scale * scale, h: sceneH / scale * scale,
+          objs: dispObjs[dAddr],
+        };
+      });
+      /* Normalize: overlay uses scene pixel coords */
+      Object.keys(dispObjs).forEach(dAddr => {
+        const disp = (displays || []).find(dd => dd.addr === dAddr);
+        if (disp) {
+          _hlOverlays[dAddr + "-3d"] = {
+            canvas: bufCanvas,
+            w: disp.hor_res, h: disp.ver_res,
+            objs: dispObjs[dAddr],
+          };
+          /* Scale canvas to match scene viewport */
+          bufCanvas.width = sceneScaledW;
+          bufCanvas.height = sceneScaledH;
+        }
+      });
+    }
+  }
+
+  /* Build border layer divs */
   const layerEls = [];
   layers.forEach(l => {
     const div = el("div", "scene-layer");
@@ -410,24 +526,52 @@ function build3DScene(container, trees) {
     div.style.height = Math.max(2, h) + "px";
     div.style.left = x + "px";
     div.style.top = y + "px";
-    div.style.borderColor = COLORS[l.depth % COLORS.length];
+    div.style.borderColor = DEPTH_COLORS[l.depth % DEPTH_COLORS.length];
     div.dataset.depth = l.depth;
     div.dataset.addr = l.addr || "";
+    div.dataset.screenIdx = l.screenIdx;
     div.dataset.info = l.class_name + "@" + (l.addr || "?") +
       " [" + l.x1 + "," + l.y1 + "," + l.x2 + "," + l.y2 + "]" +
       " children=" + l.child_count + " styles=" + l.style_count;
     if (l.addr) registerHL(l.addr, div);
-    layerEls.push({ el: div, depth: l.depth });
+    layerEls.push({ el: div, depth: l.depth, localDepth: l.localDepth, screenIdx: l.screenIdx });
     scene.appendChild(div);
   });
 
-  /* Apply Z spread */
-  function applySpread(spread) {
-    layerEls.forEach(le => {
-      le.el.style.transform = "translateZ(" + (le.depth * spread) + "px)";
+  /* Apply layer visibility filter and recompute Z positions */
+  function applyLayerVisibility() {
+    const bordersOn = toggleBorders.dataset.on === "1";
+
+    /* Recompute global depth offsets for visible screens only */
+    const visibleScreens = [];
+    for (let i = 0; i < screenNames.length; i++) {
+      if (layerVisible[i]) visibleScreens.push(i);
+    }
+    const screenOffset = {};
+    let offset = 0;
+    visibleScreens.forEach(idx => {
+      screenOffset[idx] = offset;
+      offset += (screenMaxLocal[idx] || 0) + 2;
     });
+
+    const spread = Number(spreadSlider.value);
+    layerEls.forEach(le => {
+      if (!bordersOn || !layerVisible[le.screenIdx]) {
+        le.el.style.display = "none";
+        return;
+      }
+      le.el.style.display = "";
+      const newDepth = screenOffset[le.screenIdx] + le.localDepth;
+      le.el.style.transform = "translateZ(" + (newDepth * spread) + "px)";
+    });
+    if (bufLayer) bufLayer.style.transform = "translateZ(" + (-spread * 1.5) + "px)";
   }
-  applySpread(Number(spreadSlider.value));
+
+  /* Apply Z spread using current visibility state */
+  function applySpread(spread) {
+    applyLayerVisibility();
+  }
+  applyLayerVisibility();
 
   spreadSlider.addEventListener("input", () => {
     applySpread(Number(spreadSlider.value));
@@ -435,13 +579,55 @@ function build3DScene(container, trees) {
 
   /* Drag rotation state */
   let rotX = -30, rotY = 30, dragging = false, lastX = 0, lastY = 0;
+  let is3d = true;
 
   function applyRotation() {
-    scene.style.transform = "translate(-50%, -50%) rotateX(" + rotX + "deg) rotateY(" + rotY + "deg)";
+    if (is3d) {
+      scene.style.transform = "translate(-50%, -50%) rotateX(" + rotX + "deg) rotateY(" + rotY + "deg)";
+    } else {
+      scene.style.transform = "translate(-50%, -50%)";
+    }
   }
   applyRotation();
 
+  /* Toggle handlers */
+  toggle3d.addEventListener("click", () => {
+    is3d = toggle3d.dataset.on === "1";
+    if (!is3d) {
+      applySpread(0);
+      spreadSlider.disabled = true;
+    } else {
+      applySpread(Number(spreadSlider.value));
+      spreadSlider.disabled = false;
+    }
+    applyRotation();
+  });
+
+  toggleBorders.addEventListener("click", () => {
+    const show = toggleBorders.dataset.on === "1";
+    layerEls.forEach(le => {
+      le.el.style.display = (show && layerVisible[le.screenIdx]) ? "" : "none";
+    });
+  });
+
+  if (bufBase64) {
+    toggleBuf.addEventListener("click", () => {
+      const show = toggleBuf.dataset.on === "1";
+      if (bufLayer) bufLayer.style.display = show ? "" : "none";
+    });
+  }
+
+  toggleBorders.addEventListener("click", () => { applyLayerVisibility(); });
+
+  if (bufBase64) {
+    toggleBuf.addEventListener("click", () => {
+      const show = toggleBuf.dataset.on === "1";
+      if (bufLayer) bufLayer.style.display = show ? "" : "none";
+    });
+  }
+
   viewport.addEventListener("mousedown", e => {
+    if (!is3d) return;
     dragging = true; lastX = e.clientX; lastY = e.clientY;
     viewport.style.cursor = "grabbing";
   });
@@ -496,9 +682,18 @@ function build3DScene(container, trees) {
   /* Reset button */
   resetBtn.addEventListener("click", () => {
     rotX = -30; rotY = 30;
-    spreadSlider.value = "60";
+    spreadSlider.value = String(defaultSpread);
+    spreadSlider.disabled = false;
+    is3d = true;
+    toggle3d.dataset.on = "1"; toggle3d.classList.add("active");
+    toggleBorders.dataset.on = "1"; toggleBorders.classList.add("active");
+    if (toggleBuf) { toggleBuf.dataset.on = bufBase64 ? "1" : "0"; toggleBuf.classList.toggle("active", !!bufBase64); }
+    layerEls.forEach(le => { le.el.style.display = ""; });
+    layerVisible.fill(true);
+    layerBtns.forEach(b => b.classList.add("active"));
+    if (bufLayer) bufLayer.style.display = bufBase64 ? "" : "none";
     applyRotation();
-    applySpread(60);
+    applySpread(defaultSpread);
   });
 }
 
@@ -870,8 +1065,7 @@ function renderDashboard(data) {
   });
 
   /* Main panels in bento layout order */
-  grid.appendChild(buildDisplays(data));
-  grid.appendChild(buildObjectTrees(data));
+  grid.appendChild(buildDisplayAndTrees(data));
 
   grid.appendChild(buildAnimations(data));
   grid.appendChild(buildTimers(data));
