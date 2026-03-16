@@ -153,6 +153,37 @@ class LVDrawBuf(Value):
             print(f"Unexpected error: {str(e)}")
             return False
 
+    def to_png_bytes(self) -> Optional[bytes]:
+        """Convert buffer to PNG bytes in memory. Returns None on failure."""
+        import io
+
+        header = self.super_value("header")
+        stride = int(header["stride"])
+        height = int(header["h"])
+        cf_info = self.color_format_info()
+        data_ptr = self.super_value("data")
+        data_size = int(self.super_value("data_size"))
+        width = (stride * 8) // cf_info["bpp"] if cf_info["bpp"] else 0
+        expected_data_size = stride * height
+
+        if not data_ptr or width <= 0 or height <= 0 or data_size < expected_data_size:
+            return None
+
+        try:
+            pixel_data = (
+                gdb.selected_inferior()
+                .read_memory(int(data_ptr), expected_data_size)
+                .tobytes()
+            )
+            img = self._convert_to_image(pixel_data, width, height, cf_info["value"])
+            if img is None:
+                return None
+            buf = io.BytesIO()
+            img.save(buf, format="PNG")
+            return buf.getvalue()
+        except (gdb.MemoryError, Exception):
+            return None
+
     def _convert_to_image(
         self, pixel_data: bytes, width: int, height: int, color_format: int
     ) -> Optional[Image.Image]:

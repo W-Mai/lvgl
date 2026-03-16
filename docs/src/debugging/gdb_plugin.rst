@@ -49,6 +49,7 @@ The plugin provides the following commands.
 - ``dump image_decoder``: List all registered image decoders.
 - ``dump fs_drv``: List all registered filesystem drivers.
 - ``dump draw_task <expr>``: List draw tasks from a layer.
+- ``dump dashboard``: Generate an HTML dashboard of all LVGL runtime state.
 - ``info style``: Inspect style properties of an ``lv_style_t`` or an ``lv_obj_t``.
 - ``info draw_unit``: Print raw struct details for each drawing unit.
 - ``info obj_class <expr>``: Show object class hierarchy.
@@ -190,6 +191,42 @@ Dump Draw Tasks
 
 ``dump draw_task <layer_expr>``: Walk the draw task linked list from a layer expression
 and display each task's type, state, area, opacity, and preferred draw unit id.
+
+
+Dump Dashboard
+**************
+
+``dump dashboard``: Collect all LVGL runtime state (displays, object trees,
+animations, timers, caches, input devices, groups, draw units/tasks,
+subjects/observers, image decoders, filesystem drivers) and generate a
+self-contained HTML file for offline browsing.
+
+The dashboard supports three output modes:
+
+- ``dump dashboard``: Generate ``lvgl_dashboard.html`` with all data embedded.
+- ``dump dashboard --json``: Export raw JSON data to ``lvgl_dashboard.json``.
+- ``dump dashboard --viewer``: Generate an empty HTML viewer (``lvgl_viewer.html``)
+  that can load JSON files via drag-and-drop.
+
+Use ``-o <path>`` to specify a custom output path.
+
+Example:
+
+.. code:: bash
+
+    (gdb) dump dashboard
+    Dashboard written to lvgl_dashboard.html (1.23s)
+
+    (gdb) dump dashboard --json -o /tmp/state.json
+    Dashboard written to /tmp/state.json (0.98s)
+
+    (gdb) dump dashboard --viewer
+    Viewer written to lvgl_viewer.html
+
+The generated HTML is fully self-contained (no external dependencies) and
+includes a sidebar for navigation, a search box for filtering, collapsible
+object trees with style details, framebuffer image previews, and cross-reference
+links between related objects.
 
 
 Inspect Object Class
