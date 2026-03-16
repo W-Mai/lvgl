@@ -385,12 +385,10 @@ a.xref:hover { color: var(--blue); border-bottom-color: var(--blue); }
   background: rgba(137, 180, 250, 0.06);
   border-radius: 2px; cursor: pointer;
   transition: background 0.15s ease, box-shadow 0.15s ease;
-  backface-visibility: hidden;
 }
 .scene-buf-layer {
   position: absolute; border-radius: 2px;
   overflow: hidden; pointer-events: none;
-  backface-visibility: hidden;
   box-shadow: 0 0 0 1px var(--surface1);
 }
 .scene-buf-layer img {
