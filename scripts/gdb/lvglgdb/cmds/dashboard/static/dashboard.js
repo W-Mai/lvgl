@@ -167,7 +167,7 @@ function renderObjTree(obj, depth) {
   det.className = "obj-node";
   if (obj.addr) det.id = "obj-" + obj.addr;
   const sum = document.createElement("summary");
-  sum.style.borderLeftColor = DEPTH_COLORS[depth % DEPTH_COLORS.length];
+  sum.style.setProperty("--depth-color", DEPTH_COLORS[depth % DEPTH_COLORS.length]);
   sum.textContent = obj.class_name || "obj";
   det.appendChild(sum);
 
@@ -540,7 +540,7 @@ function build3DScene(container, trees, displays, dispObjs) {
     const defaultOn = name === "act_scr" || screenNames.length === 1;
     layerVisible.push(defaultOn);
     const btn = el("button", "scene-layer-btn" + (defaultOn ? " active" : ""), name);
-    btn.style.borderLeftColor = DEPTH_COLORS[i % DEPTH_COLORS.length];
+    btn.style.borderBottomColor = DEPTH_COLORS[i % DEPTH_COLORS.length];
     btn.dataset.idx = String(i);
 
     /* Single click: toggle visibility */
