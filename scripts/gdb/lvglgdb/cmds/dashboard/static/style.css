@@ -666,14 +666,38 @@ a.xref:hover { color: var(--blue); border-bottom-color: var(--blue); }
 .panel-hdr-cache .table-wrap { overflow-x: auto; }
 .panel-hdr-cache table { font-size: 11px; }
 .panel-decoders    { grid-column: span 4; }
-.panel-animations  { grid-column: span 4; grid-row: span 3; }
-.panel-timers      { grid-column: span 4; grid-row: span 3; }
-.panel-indevs      { grid-column: span 4; grid-row: span 3; }
-.panel-groups      { grid-column: span 4; grid-row: span 3; }
-.panel-draw-units  { grid-column: span 4; grid-row: span 3; }
-.panel-draw-tasks  { grid-column: span 4; grid-row: span 3; }
-.panel-subjects    { grid-column: span 4; grid-row: span 3; }
-.panel-fs-drivers  { grid-column: span 4; grid-row: span 2; }
+.panel-animations  { grid-column: span 4; }
+.panel-timers      { grid-column: span 4; }
+.panel-indevs      { grid-column: span 4; }
+.panel-groups      { grid-column: span 4; }
+.panel-draw-units  { grid-column: span 4; }
+.panel-draw-tasks  { grid-column: span 4; }
+.panel-subjects    { grid-column: span 4; }
+.panel-fs-drivers  { grid-column: span 4; }
+
+/* Fixed-height panels with internal scroll */
+.panel-animations,
+.panel-timers,
+.panel-indevs,
+.panel-groups,
+.panel-draw-units,
+.panel-draw-tasks,
+.panel-subjects,
+.panel-fs-drivers,
+.panel-decoders {
+  max-height: 360px;
+}
+.panel-animations > .panel-body,
+.panel-timers > .panel-body,
+.panel-indevs > .panel-body,
+.panel-groups > .panel-body,
+.panel-draw-units > .panel-body,
+.panel-draw-tasks > .panel-body,
+.panel-subjects > .panel-body,
+.panel-fs-drivers > .panel-body,
+.panel-decoders > .panel-body {
+  overflow-y: auto;
+}
 
 @media (max-width: 1200px) {
   .bento { grid-template-columns: repeat(6, 1fr); }
