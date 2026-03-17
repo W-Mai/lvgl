@@ -327,9 +327,14 @@ function buildDisplayAndTrees(data) {
   const totalCount = displays.length + screenCount;
   const { panel, body } = makePanel("panel-disp-trees", "🖥", "Displays & Objects", totalCount);
 
-  /* Collect all obj coords per display for overlay highlight in 3D scene */
-  const dispObjs = {};
-  trees.forEach(tree => {
+  if (displays.length === 0 && trees.length === 0) {
+    body.appendChild(emptyMsg());
+    return panel;
+  }
+
+  /* Build per-display data */
+  const dispEntries = displays.map((d, i) => {
+    const tree = trees.find(t => t.display_addr === d.addr) || { display_addr: d.addr, screens: [] };
     const objs = [];
     function walk(obj) {
       const c = obj.coords || {};
@@ -337,43 +342,48 @@ function buildDisplayAndTrees(data) {
       if (obj.children) obj.children.forEach(walk);
     }
     (tree.screens || []).forEach(walk);
-    dispObjs[tree.display_addr] = objs;
+    return { disp: d, tree, dispObjs: { [d.addr]: objs }, idx: i };
   });
 
-  /* Display info bar: compact inline summary per display */
-  if (displays.length > 0) {
-    const infoBar = el("div", "disp-info-bar");
-    displays.forEach(d => {
-      const chip = el("div", "disp-chip");
-      if (d.addr) chip.id = "disp-" + d.addr;
-      chip.appendChild(el("span", "disp-addr", d.addr || ""));
-      chip.appendChild(el("span", "disp-res", d.hor_res + " × " + d.ver_res));
-      chip.appendChild(el("span", "disp-screens", d.screen_count + " screens"));
-      /* Buffer format tags */
-      ["buf_1", "buf_2"].forEach(bk => {
-        const b = d[bk]; if (!b) return;
-        chip.appendChild(badge(bk.replace("_", " ") + " " + b.width + "×" + b.height + " " + b.color_format, "blue"));
-      });
-      infoBar.appendChild(chip);
-    });
-    body.appendChild(infoBar);
-  }
+  /* Display selector tab bar */
+  const tabBar = el("div", "disp-tab-bar");
+  const contentArea = el("div", "disp-content-area");
+  const tabBtns = [];
 
-  /* Unified view: tree (left) + 3D (center) + detail (right) */
-  if (trees.length > 0 || displays.length > 0) {
+  function showDisplay(idx) {
+    /* Update tab active state */
+    tabBtns.forEach((b, j) => b.classList.toggle("active", j === idx));
+    /* Rebuild content for selected display */
+    contentArea.innerHTML = "";
     _objDataMap = {};
+    _detailPanel = null;
 
+    const entry = dispEntries[idx];
+    const d = entry.disp;
+    const tree = entry.tree;
+
+    /* Display info chips */
+    const infoBar = el("div", "disp-info-bar");
+    const chip = el("div", "disp-chip");
+    chip.appendChild(el("span", "disp-addr", d.addr || ""));
+    chip.appendChild(el("span", "disp-res", d.hor_res + " × " + d.ver_res));
+    chip.appendChild(el("span", "disp-screens", d.screen_count + " screens"));
+    ["buf_1", "buf_2"].forEach(bk => {
+      const b = d[bk]; if (!b) return;
+      chip.appendChild(badge(bk.replace("_", " ") + " " + b.width + "×" + b.height + " " + b.color_format, "blue"));
+    });
+    infoBar.appendChild(chip);
+    contentArea.appendChild(infoBar);
+
+    /* Three-column split: tree | 3D | detail */
     const split = el("div", "obj-split");
 
     const treeView = el("div", "obj-tree-view");
-    trees.forEach(tree => {
-      treeView.appendChild(el("div", "disp-addr", "Display: " + tree.display_addr));
-      tree.screens.forEach(s => treeView.appendChild(renderObjTree(s)));
-    });
+    tree.screens.forEach(s => treeView.appendChild(renderObjTree(s)));
     split.appendChild(treeView);
 
     const view3d = el("div", "obj-3d-view");
-    build3DScene(view3d, trees, displays, dispObjs);
+    build3DScene(view3d, [tree], [d], entry.dispObjs);
     split.appendChild(view3d);
 
     const detailView = el("div", "obj-detail-view");
@@ -381,12 +391,22 @@ function buildDisplayAndTrees(data) {
     _detailPanel = detailView;
     split.appendChild(detailView);
 
-    body.appendChild(split);
+    contentArea.appendChild(split);
   }
 
-  if (displays.length === 0 && trees.length === 0) {
-    body.appendChild(emptyMsg());
-  }
+  dispEntries.forEach((entry, i) => {
+    const d = entry.disp;
+    const btn = el("button", "disp-tab-btn", d.hor_res + "×" + d.ver_res + " " + (d.addr || ""));
+    btn.addEventListener("click", () => showDisplay(i));
+    tabBtns.push(btn);
+    tabBar.appendChild(btn);
+  });
+
+  body.appendChild(tabBar);
+  body.appendChild(contentArea);
+
+  /* Show first display by default */
+  if (dispEntries.length > 0) showDisplay(0);
 
   return panel;
 }
@@ -433,13 +453,13 @@ function build3DScene(container, trees, displays, dispObjs) {
 
   if (layers.length === 0) { container.appendChild(emptyMsg()); return; }
 
-  /* Compute scene bounds */
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity, maxDepth = 0;
-  layers.forEach(l => {
-    minX = Math.min(minX, l.x1); minY = Math.min(minY, l.y1);
-    maxX = Math.max(maxX, l.x2); maxY = Math.max(maxY, l.y2);
-    maxDepth = Math.max(maxDepth, l.depth);
+  /* Scene bounds fixed to display resolution (objects may extend beyond) */
+  let minX = 0, minY = 0, maxX = 0, maxY = 0, maxDepth = 0;
+  (displays || []).forEach(d => {
+    maxX = Math.max(maxX, d.hor_res || 0);
+    maxY = Math.max(maxY, d.ver_res || 0);
   });
+  layers.forEach(l => { maxDepth = Math.max(maxDepth, l.depth); });
   const sceneW = maxX - minX || 1;
   const sceneH = maxY - minY || 1;
 

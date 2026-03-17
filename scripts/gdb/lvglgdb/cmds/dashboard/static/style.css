@@ -265,6 +265,22 @@ a.xref {
 a.xref:hover { color: var(--blue); border-bottom-color: var(--blue); }
 
 /* === Display Card === */
+.disp-tab-bar {
+  display: flex; gap: 4px; padding: 0 0 8px;
+  border-bottom: 1px solid var(--surface0); margin-bottom: 8px;
+}
+.disp-tab-btn {
+  padding: 4px 12px; border: 1px solid var(--surface0); border-bottom: none;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  background: var(--mantle); color: var(--subtext0);
+  font-size: 11px; font-family: "JetBrains Mono", monospace;
+  cursor: pointer; transition: background var(--transition), color var(--transition);
+}
+.disp-tab-btn:hover { background: var(--surface0); }
+.disp-tab-btn.active {
+  background: var(--base); color: var(--blue); font-weight: 600;
+  border-color: var(--blue); border-bottom: 2px solid var(--base);
+}
 .disp-info-bar {
   display: flex; flex-wrap: wrap; gap: 6px;
   padding: 0 0 8px; margin-bottom: 4px;
