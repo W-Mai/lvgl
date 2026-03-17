@@ -700,8 +700,14 @@ function build3DScene(container, trees, displays, dispObjs) {
     if (t && t.dataset.addr) {
       const target = document.getElementById("obj-" + t.dataset.addr);
       if (target) {
+        /* Expand all ancestor <details> nodes so the target is visible */
+        let p = target.parentElement;
+        while (p) {
+          if (p.tagName === "DETAILS") p.open = true;
+          p = p.parentElement;
+        }
         target.open = true;
-        target.scrollIntoView({ behavior: "smooth", block: "center" });
+        target.scrollIntoView({ behavior: "smooth", block: "nearest" });
       }
     }
   });
@@ -862,16 +868,16 @@ function buildImageCache(data) {
   const entries = data.image_cache || [];
   const { panel, body } = makePanel("panel-img-cache", "🖼", "Image Cache", entries.length);
   if (entries.length === 0) { body.appendChild(emptyMsg()); return panel; }
+  const grid = el("div", "cache-grid");
   entries.forEach(e => {
     const card = el("div", "cache-entry");
     if (e.entry_addr) card.id = "imgcache-" + e.entry_addr;
     if (e.preview_base64) {
-      const preview = el("div", "cache-preview");
       const img = document.createElement("img");
+      img.className = "cache-thumb";
       img.src = "data:image/png;base64," + e.preview_base64;
       img.alt = "decoded preview";
-      preview.appendChild(img);
-      card.appendChild(preview);
+      card.appendChild(img);
     }
     const info = el("div", "cache-info");
     info.appendChild(el("div", "cache-src", e.src || "-"));
@@ -880,10 +886,11 @@ function buildImageCache(data) {
     meta.appendChild(el("span", "cache-size-label", e.size || ""));
     meta.appendChild(badge("rc=" + e.ref_count, "teal"));
     info.appendChild(meta);
-    info.appendChild(el("div", "cache-decoder-label", e.decoder_name || ""));
+    if (e.decoder_name) info.appendChild(el("div", "cache-decoder-label", e.decoder_name));
     card.appendChild(info);
-    body.appendChild(card);
+    grid.appendChild(card);
   });
+  body.appendChild(grid);
   return panel;
 }
 
@@ -1097,21 +1104,20 @@ function renderDashboard(data) {
   /* Main panels in bento layout order */
   grid.appendChild(buildDisplayAndTrees(data));
 
-  grid.appendChild(buildAnimations(data));
-  grid.appendChild(buildTimers(data));
-  grid.appendChild(buildIndevs(data));
-
   grid.appendChild(buildImageCache(data));
   grid.appendChild(buildSimpleTable(data, "image_header_cache",
     "panel-hdr-cache", "📋", "Header Cache",
     ["entry_addr","src","size","cf","ref_count","src_type","decoder_name"], "imghdr"));
-  grid.appendChild(buildGroups(data));
+  grid.appendChild(buildDecoders(data));
 
+  grid.appendChild(buildAnimations(data));
+  grid.appendChild(buildTimers(data));
+  grid.appendChild(buildIndevs(data));
+
+  grid.appendChild(buildGroups(data));
   grid.appendChild(buildDrawUnits(data));
   grid.appendChild(buildDrawTasks(data));
   grid.appendChild(buildSubjects(data));
-
-  grid.appendChild(buildDecoders(data));
   grid.appendChild(buildFsDrivers(data));
 }
 
