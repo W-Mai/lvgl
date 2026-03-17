@@ -155,7 +155,12 @@ function makeTable(headers, rows, anchorPrefix) {
   return wrap;
 }
 
-/* --- Object tree rendering --- */
+/* --- Object data registry for detail panel --- */
+let _objDataMap = {};  /* addr -> obj data dict */
+let _selectedAddr = null;
+let _detailPanel = null;
+
+/* --- Object tree rendering (pure hierarchy, no styles) --- */
 function renderObjTree(obj, depth) {
   if (depth === undefined) depth = 0;
   const det = document.createElement("details");
@@ -163,54 +168,117 @@ function renderObjTree(obj, depth) {
   if (obj.addr) det.id = "obj-" + obj.addr;
   const sum = document.createElement("summary");
   sum.style.borderLeftColor = DEPTH_COLORS[depth % DEPTH_COLORS.length];
-  const c = obj.coords || {};
-  sum.textContent = (obj.class_name || "obj") + "@" + (obj.addr || "?") +
-    "  [" + (c.x1||0) + "," + (c.y1||0) + "," + (c.x2||0) + "," + (c.y2||0) + "]" +
-    "  children=" + (obj.child_count||0) + "  styles=" + (obj.style_count||0);
+  sum.textContent = obj.class_name || "obj";
   det.appendChild(sum);
+
+  /* Store full data for detail panel */
+  if (obj.addr) _objDataMap[obj.addr] = obj;
 
   /* Register for linked highlight */
   if (obj.addr) {
     registerHL(obj.addr, det);
     sum.addEventListener("mouseenter", () => highlightObj(obj.addr));
     sum.addEventListener("mouseleave", () => clearHighlight());
+    sum.addEventListener("click", e => {
+      e.stopPropagation();
+      selectObj(obj.addr);
+    });
   }
 
+  if (obj.children) obj.children.forEach(ch => det.appendChild(renderObjTree(ch, depth + 1)));
+  return det;
+}
+
+/* --- Select object and show detail panel --- */
+function selectObj(addr) {
+  /* Deselect previous */
+  if (_selectedAddr) {
+    const prev = document.getElementById("obj-" + _selectedAddr);
+    if (prev) prev.classList.remove("obj-selected");
+  }
+  _selectedAddr = addr;
+  const node = document.getElementById("obj-" + addr);
+  if (node) node.classList.add("obj-selected");
+  if (_detailPanel) renderObjDetail(addr);
+}
+
+function renderObjDetail(addr) {
+  _detailPanel.innerHTML = "";
+  const obj = _objDataMap[addr];
+  if (!obj) {
+    _detailPanel.appendChild(el("p", "empty", "Select an object to inspect."));
+    return;
+  }
+
+  /* Header */
+  const hdr = el("div", "detail-header");
+  hdr.appendChild(el("span", "detail-class", obj.class_name || "obj"));
+  hdr.appendChild(el("span", "mono-addr", obj.addr));
+  _detailPanel.appendChild(hdr);
+
+  /* Coordinates */
+  const c = obj.coords || {};
+  const coordSec = el("div", "detail-section");
+  coordSec.appendChild(el("div", "detail-section-title", "Coordinates"));
+  const coordGrid = el("div", "detail-coord-grid");
+  ["x1","y1","x2","y2"].forEach(k => {
+    coordGrid.appendChild(el("span", "detail-coord-label", k));
+    coordGrid.appendChild(el("span", "detail-coord-val", String(c[k] || 0)));
+  });
+  const w = (c.x2||0) - (c.x1||0), h = (c.y2||0) - (c.y1||0);
+  coordGrid.appendChild(el("span", "detail-coord-label", "w"));
+  coordGrid.appendChild(el("span", "detail-coord-val", String(w)));
+  coordGrid.appendChild(el("span", "detail-coord-label", "h"));
+  coordGrid.appendChild(el("span", "detail-coord-val", String(h)));
+  coordSec.appendChild(coordGrid);
+  _detailPanel.appendChild(coordSec);
+
+  /* References */
+  const refSec = el("div", "detail-section");
+  refSec.appendChild(el("div", "detail-section-title", "References"));
   if (obj.parent_addr) {
-    const meta = el("div", "obj-meta");
-    meta.appendChild(document.createTextNode("parent: "));
-    meta.appendChild(xref(obj.parent_addr, "obj"));
-    if (obj.group_addr) {
-      meta.appendChild(document.createTextNode("  group: "));
-      meta.appendChild(xref(obj.group_addr, "group"));
-    }
-    det.appendChild(meta);
+    const row = el("div", "kv-row");
+    row.appendChild(el("span", "kv-label", "parent"));
+    row.appendChild(xref(obj.parent_addr, "obj"));
+    refSec.appendChild(row);
   }
+  if (obj.group_addr) {
+    const row = el("div", "kv-row");
+    row.appendChild(el("span", "kv-label", "group"));
+    row.appendChild(xref(obj.group_addr, "group"));
+    refSec.appendChild(row);
+  }
+  refSec.appendChild(kvPair("children", String(obj.child_count || 0)));
+  refSec.appendChild(kvPair("styles", String(obj.style_count || 0)));
+  _detailPanel.appendChild(refSec);
 
+  /* Styles */
   if (obj.styles && obj.styles.length > 0) {
-    const sp = el("div", "style-panel");
+    const styleSec = el("div", "detail-section");
+    styleSec.appendChild(el("div", "detail-section-title", "Styles (" + obj.styles.length + ")"));
     obj.styles.forEach(s => {
-      sp.appendChild(el("div", "style-header",
+      const card = el("div", "detail-style-card");
+      card.appendChild(el("div", "detail-style-hdr",
         "[" + s.index + "] " + s.selector_str + "  " + s.flags_str));
       if (s.properties && s.properties.length > 0) {
-        const t = document.createElement("table");
-        const th = t.createTHead().insertRow();
+        const tbl = document.createElement("table");
+        tbl.className = "detail-style-table";
+        const thead = tbl.createTHead().insertRow();
         ["prop", "value"].forEach(h => {
-          const c = document.createElement("th"); c.textContent = h; th.appendChild(c);
+          const th = document.createElement("th"); th.textContent = h; thead.appendChild(th);
         });
-        const tb = t.createTBody();
+        const tbody = tbl.createTBody();
         s.properties.forEach(p => {
-          const r = tb.insertRow();
+          const r = tbody.insertRow();
           r.insertCell().textContent = p.prop_name;
           r.insertCell().textContent = p.value_str;
         });
-        sp.appendChild(t);
+        card.appendChild(tbl);
       }
+      styleSec.appendChild(card);
     });
-    det.appendChild(sp);
+    _detailPanel.appendChild(styleSec);
   }
-  if (obj.children) obj.children.forEach(ch => det.appendChild(renderObjTree(ch, depth + 1)));
-  return det;
 }
 
 /* --- Depth color palette shared by 3D scene and tree view --- */
@@ -291,13 +359,11 @@ function buildDisplayAndTrees(data) {
     body.appendChild(infoBar);
   }
 
-  /* Unified view: 3D (left) + tree (right) */
+  /* Unified view: tree (left) + 3D (center) + detail (right) */
   if (trees.length > 0 || displays.length > 0) {
-    const split = el("div", "obj-split");
+    _objDataMap = {};
 
-    const view3d = el("div", "obj-3d-view");
-    build3DScene(view3d, trees, displays, dispObjs);
-    split.appendChild(view3d);
+    const split = el("div", "obj-split");
 
     const treeView = el("div", "obj-tree-view");
     trees.forEach(tree => {
@@ -305,6 +371,15 @@ function buildDisplayAndTrees(data) {
       tree.screens.forEach(s => treeView.appendChild(renderObjTree(s)));
     });
     split.appendChild(treeView);
+
+    const view3d = el("div", "obj-3d-view");
+    build3DScene(view3d, trees, displays, dispObjs);
+    split.appendChild(view3d);
+
+    const detailView = el("div", "obj-detail-view");
+    detailView.appendChild(el("p", "empty", "Select an object to inspect."));
+    _detailPanel = detailView;
+    split.appendChild(detailView);
 
     body.appendChild(split);
   }
@@ -694,13 +769,13 @@ function build3DScene(container, trees, displays, dispObjs) {
     }
   });
 
-  /* Click to highlight and scroll to tree node */
+  /* Click to highlight, select and scroll to tree node */
   scene.addEventListener("click", e => {
     const t = e.target.closest(".scene-layer");
     if (t && t.dataset.addr) {
+      selectObj(t.dataset.addr);
       const target = document.getElementById("obj-" + t.dataset.addr);
       if (target) {
-        /* Expand all ancestor <details> nodes so the target is visible */
         let p = target.parentElement;
         while (p) {
           if (p.tagName === "DETAILS") p.open = true;
