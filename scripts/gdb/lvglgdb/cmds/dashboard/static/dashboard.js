@@ -1309,28 +1309,33 @@ new MutationObserver(() => {
   document.querySelectorAll(".panel[id]").forEach(p => observer.observe(p));
 }).observe(document.getElementById("bento-grid"), { childList: true });
 
-/* --- Theme toggle (dark/light) --- */
+/* --- Theme toggle (dark/light/cyber) --- */
 (function initTheme() {
   const btn = document.getElementById("theme-toggle");
   const root = document.documentElement;
   const STORAGE_KEY = "lvgl-dash-theme";
+  const THEMES = ["dark", "light", "cyber"];
+  const ICONS = { dark: "🌙", light: "☀️", cyber: "⚡" };
+  const TITLES = { dark: "Switch to light theme", light: "Switch to cyber theme", cyber: "Switch to dark theme" };
 
   function applyTheme(theme) {
     root.setAttribute("data-theme", theme);
-    btn.textContent = theme === "light" ? "☀️" : "🌙";
-    btn.title = theme === "light" ? "Switch to dark theme" : "Switch to light theme";
+    btn.textContent = ICONS[theme] || "🌙";
+    btn.title = TITLES[theme] || "";
   }
 
   /* Restore from localStorage, or follow system preference */
   const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved) {
+  if (saved && THEMES.includes(saved)) {
     applyTheme(saved);
   } else if (window.matchMedia("(prefers-color-scheme: light)").matches) {
     applyTheme("light");
   }
 
   btn.addEventListener("click", () => {
-    const next = root.getAttribute("data-theme") === "light" ? "dark" : "light";
+    const cur = root.getAttribute("data-theme") || "dark";
+    const idx = THEMES.indexOf(cur);
+    const next = THEMES[(idx + 1) % THEMES.length];
     applyTheme(next);
     localStorage.setItem(STORAGE_KEY, next);
   });

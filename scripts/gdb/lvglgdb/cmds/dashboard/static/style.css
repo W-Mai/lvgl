@@ -95,6 +95,173 @@
   --search-icon-fill: %239ca0b0;
 }
 
+/* --- Cyberpunk / Neon Sci-Fi theme --- */
+[data-theme="cyber"] {
+  --crust:    #05080a;
+  --mantle:   #0a0e14;
+  --base:     #0d1117;
+  --surface0: #1a1f2e;
+  --surface1: #252b3b;
+  --surface2: #2f3649;
+  --overlay0: #4a5568;
+  --overlay1: #718096;
+  --text:     #e0f0ff;
+  --subtext0: #8ba4c0;
+  --subtext1: #a0c4e8;
+  --blue:     #00e5ff;
+  --sapphire: #00bcd4;
+  --lavender: #b388ff;
+  --green:    #00ff9f;
+  --yellow:   #ffea00;
+  --peach:    #ff6e40;
+  --red:      #ff1744;
+  --mauve:    #e040fb;
+  --pink:     #ff4081;
+  --teal:     #1de9b6;
+  --flamingo: #ff80ab;
+
+  --radius:   4px;
+  --radius-sm: 2px;
+
+  --panel-bg: rgba(13, 17, 23, 0.85);
+  --panel-border: rgba(0, 229, 255, 0.15);
+  --glow-blue: rgba(0, 229, 255, 0.06);
+  --topbar-bg: rgba(5, 8, 10, 0.92);
+  --panel-header-bg: rgba(10, 14, 20, 0.7);
+  --hover-row: rgba(0, 229, 255, 0.06);
+  --hover-summary: rgba(0, 229, 255, 0.08);
+  --td-border: rgba(0, 229, 255, 0.08);
+  --shadow-hover: 0 0 20px rgba(0, 229, 255, 0.12), 0 0 40px rgba(0, 229, 255, 0.04);
+  --icon-bg-blue:   rgba(0, 229, 255, 0.10);
+  --icon-bg-green:  rgba(0, 255, 159, 0.10);
+  --icon-bg-mauve:  rgba(224, 64, 251, 0.10);
+  --icon-bg-peach:  rgba(255, 110, 64, 0.10);
+  --icon-bg-teal:   rgba(29, 233, 182, 0.10);
+  --icon-bg-pink:   rgba(255, 64, 129, 0.10);
+  --version-bg: rgba(0, 255, 159, 0.10);
+  --nav-active-bg: rgba(0, 229, 255, 0.12);
+  --search-icon-fill: %234a5568;
+
+  /* Cyber-specific glow tokens */
+  --neon-cyan: #00e5ff;
+  --neon-magenta: #e040fb;
+  --neon-yellow: #ffea00;
+  --glow-cyan: 0 0 8px rgba(0, 229, 255, 0.3);
+  --glow-magenta: 0 0 8px rgba(224, 64, 251, 0.3);
+  --scanline-bg: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 229, 255, 0.015) 2px,
+    rgba(0, 229, 255, 0.015) 4px
+  );
+}
+
+/* Cyber theme panel glow and scanline overlay */
+[data-theme="cyber"] .panel {
+  border-color: rgba(0, 229, 255, 0.2);
+  box-shadow: inset 0 0 30px rgba(0, 229, 255, 0.02);
+}
+[data-theme="cyber"] .panel:hover {
+  border-color: rgba(0, 229, 255, 0.4);
+  box-shadow: var(--shadow-hover), inset 0 0 30px rgba(0, 229, 255, 0.03);
+}
+[data-theme="cyber"] .panel-header {
+  border-bottom-color: rgba(0, 229, 255, 0.12);
+  background: linear-gradient(90deg, rgba(0, 229, 255, 0.05) 0%, transparent 100%);
+}
+[data-theme="cyber"] .panel-title {
+  color: var(--neon-cyan);
+  text-shadow: 0 0 6px rgba(0, 229, 255, 0.3);
+  letter-spacing: 1.5px;
+}
+[data-theme="cyber"] .panel-badge {
+  background: rgba(0, 229, 255, 0.12);
+  color: var(--neon-cyan);
+  border: 1px solid rgba(0, 229, 255, 0.2);
+}
+
+/* Cyber topbar */
+[data-theme="cyber"] .topbar {
+  border-bottom-color: rgba(0, 229, 255, 0.2);
+  box-shadow: 0 1px 12px rgba(0, 229, 255, 0.08);
+}
+[data-theme="cyber"] .topbar-brand {
+  color: var(--neon-cyan);
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.4);
+}
+[data-theme="cyber"] .topbar-brand .logo {
+  background: var(--neon-cyan);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
+}
+[data-theme="cyber"] .topbar-nav a:hover {
+  background: rgba(0, 229, 255, 0.08);
+  color: var(--neon-cyan);
+  text-shadow: 0 0 4px rgba(0, 229, 255, 0.3);
+}
+
+/* Cyber stat cards */
+[data-theme="cyber"] .stat-value {
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.3);
+}
+[data-theme="cyber"] .stat-label {
+  color: rgba(0, 229, 255, 0.5);
+  letter-spacing: 1px;
+}
+
+/* Cyber table styling */
+[data-theme="cyber"] th {
+  color: var(--neon-cyan);
+  text-shadow: 0 0 4px rgba(0, 229, 255, 0.2);
+  border-bottom-color: rgba(0, 229, 255, 0.15);
+}
+[data-theme="cyber"] tr:hover td {
+  background: rgba(0, 229, 255, 0.04);
+}
+
+/* Cyber 3D viewport */
+[data-theme="cyber"] .scene-viewport {
+  border-color: rgba(0, 229, 255, 0.2);
+  box-shadow: inset 0 0 40px rgba(0, 229, 255, 0.03);
+}
+[data-theme="cyber"] .scene-layer {
+  background: rgba(0, 229, 255, 0.04);
+}
+[data-theme="cyber"] .scene-layer-hover,
+[data-theme="cyber"] .scene-layer.hl-active {
+  background: rgba(0, 229, 255, 0.15);
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.4);
+}
+
+/* Cyber badges */
+[data-theme="cyber"] .badge {
+  border: 1px solid currentColor;
+  text-shadow: 0 0 4px currentColor;
+}
+
+/* Cyber version tag */
+[data-theme="cyber"] .version-tag {
+  border: 1px solid rgba(0, 255, 159, 0.3);
+  text-shadow: 0 0 4px rgba(0, 255, 159, 0.3);
+}
+
+/* Cyber scrollbar */
+[data-theme="cyber"] ::-webkit-scrollbar-thumb {
+  background: rgba(0, 229, 255, 0.2);
+}
+[data-theme="cyber"] ::-webkit-scrollbar-track {
+  background: rgba(0, 229, 255, 0.02);
+}
+
+/* Cyber body scanline overlay */
+[data-theme="cyber"] body::after {
+  content: "";
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 9999;
+  background: var(--scanline-bg);
+  opacity: 0.5;
+}
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
