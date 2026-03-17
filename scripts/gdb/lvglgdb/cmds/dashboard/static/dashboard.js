@@ -25,14 +25,14 @@ const SECTIONS = [
   { key: "fs_drivers",         icon: "💾", title: "FS Drivers",         cls: "panel-fs-drivers" },
 ];
 
-/* Stat card definitions: label, dataKey, icon, colorClass */
+/* Stat card definitions: label, dataKey, icon, colorClass, sectionId */
 const STAT_DEFS = [
-  { label: "Displays",   key: "displays",     icon: "🖥", color: "blue" },
-  { label: "Objects",    key: "_objects",      icon: "🌳", color: "green" },
-  { label: "Animations", key: "animations",    icon: "🎬", color: "mauve" },
-  { label: "Timers",     key: "timers",        icon: "⏱",  color: "peach" },
-  { label: "Img Cache",  key: "image_cache",   icon: "🖼", color: "teal" },
-  { label: "Input Devs", key: "indevs",        icon: "🕹", color: "pink" },
+  { label: "Displays",   key: "displays",     icon: "🖥", color: "blue",  section: "disp-trees" },
+  { label: "Objects",    key: "_objects",      icon: "🌳", color: "green", section: "disp-trees" },
+  { label: "Animations", key: "animations",    icon: "🎬", color: "mauve", section: "animations" },
+  { label: "Timers",     key: "timers",        icon: "⏱",  color: "peach", section: "timers" },
+  { label: "Img Cache",  key: "image_cache",   icon: "🖼", color: "teal",  section: "img-cache" },
+  { label: "Input Devs", key: "indevs",        icon: "🕹", color: "pink",  section: "indevs" },
 ];
 
 function el(tag, cls, text) {
@@ -306,8 +306,15 @@ const DEPTH_COLORS = [
 function emptyMsg() { return el("p", "empty", "No entries."); }
 
 /* --- Stat card factory --- */
-function makeStatPanel(icon, label, value, colorClass) {
+function makeStatPanel(icon, label, value, colorClass, sectionId) {
   const panel = el("div", "panel panel-stat");
+  if (sectionId) {
+    panel.style.cursor = "pointer";
+    panel.addEventListener("click", () => {
+      const target = document.getElementById("sec-" + sectionId);
+      if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
   const body = el("div", "stat-mini");
   const iconWrap = el("div", "stat-icon-wrap " + colorClass, icon);
   body.appendChild(iconWrap);
@@ -323,9 +330,9 @@ function makeStatPanel(icon, label, value, colorClass) {
 function buildDisplayAndTrees(data) {
   const displays = data.displays || [];
   const trees = data.object_trees || [];
-  const screenCount = trees.reduce((n, t) => n + (t.screens ? t.screens.length : 0), 0);
-  const totalCount = displays.length + screenCount;
-  const { panel, body } = makePanel("panel-disp-trees", "🖥", "Displays & Objects", totalCount);
+  const objCount = countObjects(trees);
+  const { panel, body } = makePanel("panel-disp-trees", "🖥", "Displays & Objects",
+    displays.length + " disp / " + objCount + " obj");
 
   if (displays.length === 0 && trees.length === 0) {
     body.appendChild(emptyMsg());
@@ -379,6 +386,8 @@ function buildDisplayAndTrees(data) {
     const split = el("div", "obj-split");
 
     const treeView = el("div", "obj-tree-view");
+    const treeHeader = el("div", "obj-tree-header", "🌳 " + entry.dispObjs[d.addr].length + " objects");
+    treeView.appendChild(treeHeader);
     tree.screens.forEach(s => treeView.appendChild(renderObjTree(s)));
     split.appendChild(treeView);
 
@@ -1174,13 +1183,21 @@ function buildTopNav(data) {
   const nav = document.getElementById("topbar-nav");
   nav.innerHTML = "";
   SECTIONS.forEach(s => {
-    const count = s.key === "object_trees"
-      ? (data[s.key]||[]).reduce((n,t) => n + (t.screens?t.screens.length:0), 0)
-      : (data[s.key]||[]).length;
+    const count = s.key === "displays"
+      ? (data.displays||[]).length
+      : s.key === "object_trees"
+        ? (data[s.key]||[]).reduce((n,t) => n + (t.screens?t.screens.length:0), 0)
+        : (data[s.key]||[]).length;
     if (count === 0) return;
     const a = el("a", "", s.icon + " " + count);
-    a.href = "#sec-" + s.cls.replace("panel-", "");
     a.title = s.title + " (" + count + ")";
+    a.style.cursor = "pointer";
+    const targetId = "sec-" + s.cls.replace("panel-", "");
+    a.addEventListener("click", e => {
+      e.preventDefault();
+      const target = document.getElementById(targetId);
+      if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
     nav.appendChild(a);
   });
 }
@@ -1203,7 +1220,7 @@ function renderDashboard(data) {
   const objCount = countObjects(data.object_trees || []);
   STAT_DEFS.forEach(s => {
     const val = s.key === "_objects" ? objCount : (data[s.key]||[]).length;
-    grid.appendChild(makeStatPanel(s.icon, s.label, val, s.color));
+    grid.appendChild(makeStatPanel(s.icon, s.label, val, s.color, s.section));
   });
 
   /* Main panels in bento layout order */

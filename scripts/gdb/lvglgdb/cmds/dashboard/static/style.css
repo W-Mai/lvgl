@@ -289,6 +289,13 @@ a.xref:hover { color: var(--blue); border-bottom-color: var(--blue); }
   border-radius: 4px; border: 1px solid var(--surface0);
   image-rendering: pixelated; background: var(--crust);
 }
+.disp-tab-objcount {
+  font-size: 0.7rem; color: var(--overlay1); opacity: 0.8;
+}
+.obj-tree-header {
+  font-size: 0.75rem; color: var(--overlay1); padding: 4px 8px;
+  border-bottom: 1px solid var(--surface0); margin-bottom: 4px;
+}
 .disp-info-bar {
   display: flex; flex-wrap: wrap; gap: 6px;
   padding: 0 0 8px; margin-bottom: 4px;
