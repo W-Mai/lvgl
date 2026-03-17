@@ -654,13 +654,16 @@ a.xref:hover { color: var(--blue); border-bottom-color: var(--blue); }
 .subject-type { color: var(--mauve); font-weight: 600; }
 .subject-card table { font-size: 11px; }
 
-/* === Drop Zone === */
+/* === Drop Zone (fullscreen when no data loaded) === */
 #drop-zone {
   grid-column: 1 / -1;
   border: 2px dashed var(--surface1); border-radius: var(--radius);
   padding: 48px 24px; text-align: center;
   color: var(--overlay1); cursor: pointer;
   transition: all var(--transition);
+  min-height: calc(100vh - 44px - 48px);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
 }
 #drop-zone:hover, #drop-zone.dragover {
   border-color: var(--blue); background: var(--glow-blue);

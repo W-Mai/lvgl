@@ -1357,7 +1357,7 @@ if (raw) {
   }
 } else {
   const dropZone = document.getElementById("drop-zone");
-  dropZone.style.display = "block";
+  dropZone.style.display = "flex";
   const fileInput = document.getElementById("file-input");
 
   dropZone.addEventListener("dragover", e => {
