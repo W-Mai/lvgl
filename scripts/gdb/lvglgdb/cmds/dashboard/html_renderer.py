@@ -26,37 +26,6 @@ def _safe_json_encode(data: dict) -> str:
     return raw.replace("&", "\\u0026").replace("<", "\\u003c").replace(">", "\\u003e")
 
 
-# Anchor ID prefix mapping for cross-reference link generation
-ANCHOR_PREFIXES = {
-    "displays": "disp",
-    "animations": "anim",
-    "timers": "timer",
-    "image_cache": "imgcache",
-    "image_header_cache": "imghdr",
-    "indevs": "indev",
-    "groups": "group",
-    "draw_units": "drawunit",
-    "draw_tasks": "drawtask",
-    "subjects": "subject",
-    "image_decoders": "decoder",
-    "fs_drivers": "fsdrv",
-}
-
-# Cross-reference field -> target anchor prefix mapping
-XREF_TARGET = {
-    "parent_addr": "obj",
-    "group_addr": "group",
-    "display_addr": "disp",
-    "read_timer_addr": "timer",
-    "focused_addr": "obj",
-    "var_addr": "obj",
-    "user_data_addr": "obj",
-    "subject_addr": "subject",
-    "target_addr": "obj",
-    "decoded_addr": "imgcache",
-}
-
-
 def _read_static(filename: str) -> str:
     """Read a static asset file from the static/ directory."""
     return (_STATIC_DIR / filename).read_text(encoding="utf-8")
@@ -67,9 +36,12 @@ def _build_html(json_content: str) -> str:
     template = _read_static("template.html")
     css = _read_static("style.css")
     js = _read_static("dashboard.js")
+    # Deterministic single-replacement order: CSS → JS → JSON_DATA.
+    # Each placeholder is replaced exactly once (count=1) so that content
+    # injected in an earlier step cannot be mis-interpreted as a later placeholder.
     return (
         template
-        .replace("{{CSS}}", css)
-        .replace("{{JS}}", js)
-        .replace("{{JSON_DATA}}", json_content)
+        .replace("{{CSS}}", css, 1)
+        .replace("{{JS}}", js, 1)
+        .replace("{{JSON_DATA}}", json_content, 1)
     )

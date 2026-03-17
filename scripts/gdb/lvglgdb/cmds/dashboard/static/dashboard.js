@@ -35,6 +35,34 @@ const STAT_DEFS = [
   { label: "Input Devs", key: "indevs",        icon: "🕹", color: "pink",  section: "indevs" },
 ];
 
+/* Named constants replacing magic numbers */
+const CONSTANTS = {
+  INFINITE_REPEAT: 0xFFFFFFFF,     /* animation infinite repeat sentinel */
+  VIEWPORT_SIZE: 520,               /* 3D scene viewport fitting size */
+  PERSPECTIVE_DISTANCE: 1200,       /* CSS perspective distance (px) */
+  DEFAULT_ROT_X: -30,               /* default X rotation (degrees) */
+  DEFAULT_ROT_Y: 30,                /* default Y rotation (degrees) */
+  MIN_ZOOM: 0.2,                    /* minimum zoom level */
+  MAX_ZOOM: 10,                     /* maximum zoom level */
+  ZOOM_SENSITIVITY: 0.01,           /* wheel zoom factor */
+  ROTATION_SENSITIVITY: 0.4,        /* mouse drag rotation factor */
+  SCREEN_GAP: 2,                    /* gap between screen layers in depth */
+};
+
+/* Unified dashboard state object */
+const DashState = {
+  hl: {
+    addr: null,          /* currently highlighted address */
+    registry: {},        /* addr -> [element, ...] */
+    overlays: {},        /* display_addr -> { canvas, w, h, objs } */
+  },
+  detail: {
+    objDataMap: {},      /* addr -> obj data dict */
+    selectedAddr: null,  /* currently selected object address */
+    panel: null,         /* detail panel DOM element */
+  },
+};
+
 function el(tag, cls, text) {
   const e = document.createElement(tag);
   if (cls) e.className = cls;
@@ -65,26 +93,22 @@ function countObjects(trees) {
   return n;
 }
 
-/* --- Global linked highlight system --- */
-let _hlAddr = null;
-const _hlRegistry = {};  /* addr -> [element, ...] */
-let _hlOverlays = {};     /* display_addr -> { canvas, w, h, objs: [{addr,x1,y1,x2,y2}] } */
-
+/* --- Linked highlight system --- */
 function registerHL(addr, element) {
   if (!addr) return;
-  if (!_hlRegistry[addr]) _hlRegistry[addr] = [];
-  _hlRegistry[addr].push(element);
+  if (!DashState.hl.registry[addr]) DashState.hl.registry[addr] = [];
+  DashState.hl.registry[addr].push(element);
 }
 
 function highlightObj(addr) {
-  if (_hlAddr === addr) return;
+  if (DashState.hl.addr === addr) return;
   clearHighlight();
-  _hlAddr = addr;
+  DashState.hl.addr = addr;
   if (!addr) return;
-  const els = _hlRegistry[addr];
+  const els = DashState.hl.registry[addr];
   if (els) els.forEach(e => e.classList.add("hl-active"));
   /* Draw overlay rectangles on display buffers */
-  Object.values(_hlOverlays).forEach(ov => {
+  Object.values(DashState.hl.overlays).forEach(ov => {
     const ctx = ov.canvas.getContext("2d");
     ctx.clearRect(0, 0, ov.canvas.width, ov.canvas.height);
     const obj = ov.objs.find(o => o.addr === addr);
@@ -104,14 +128,14 @@ function highlightObj(addr) {
 }
 
 function clearHighlight() {
-  if (!_hlAddr) return;
-  const els = _hlRegistry[_hlAddr];
+  if (!DashState.hl.addr) return;
+  const els = DashState.hl.registry[DashState.hl.addr];
   if (els) els.forEach(e => e.classList.remove("hl-active"));
-  Object.values(_hlOverlays).forEach(ov => {
+  Object.values(DashState.hl.overlays).forEach(ov => {
     const ctx = ov.canvas.getContext("2d");
     ctx.clearRect(0, 0, ov.canvas.width, ov.canvas.height);
   });
-  _hlAddr = null;
+  DashState.hl.addr = null;
 }
 
 /* --- Generic table builder --- */
@@ -155,11 +179,6 @@ function makeTable(headers, rows, anchorPrefix) {
   return wrap;
 }
 
-/* --- Object data registry for detail panel --- */
-let _objDataMap = {};  /* addr -> obj data dict */
-let _selectedAddr = null;
-let _detailPanel = null;
-
 /* --- Object tree rendering (pure hierarchy, no styles) --- */
 function renderObjTree(obj, depth) {
   if (depth === undefined) depth = 0;
@@ -172,7 +191,7 @@ function renderObjTree(obj, depth) {
   det.appendChild(sum);
 
   /* Store full data for detail panel */
-  if (obj.addr) _objDataMap[obj.addr] = obj;
+  if (obj.addr) DashState.detail.objDataMap[obj.addr] = obj;
 
   /* Register for linked highlight */
   if (obj.addr) {
@@ -192,21 +211,21 @@ function renderObjTree(obj, depth) {
 /* --- Select object and show detail panel --- */
 function selectObj(addr) {
   /* Deselect previous */
-  if (_selectedAddr) {
-    const prev = document.getElementById("obj-" + _selectedAddr);
+  if (DashState.detail.selectedAddr) {
+    const prev = document.getElementById("obj-" + DashState.detail.selectedAddr);
     if (prev) prev.classList.remove("obj-selected");
   }
-  _selectedAddr = addr;
+  DashState.detail.selectedAddr = addr;
   const node = document.getElementById("obj-" + addr);
   if (node) node.classList.add("obj-selected");
-  if (_detailPanel) renderObjDetail(addr);
+  if (DashState.detail.panel) renderObjDetail(addr);
 }
 
 function renderObjDetail(addr) {
-  _detailPanel.innerHTML = "";
-  const obj = _objDataMap[addr];
+  DashState.detail.panel.innerHTML = "";
+  const obj = DashState.detail.objDataMap[addr];
   if (!obj) {
-    _detailPanel.appendChild(el("p", "empty", "Select an object to inspect."));
+    DashState.detail.panel.appendChild(el("p", "empty", "Select an object to inspect."));
     return;
   }
 
@@ -214,7 +233,7 @@ function renderObjDetail(addr) {
   const hdr = el("div", "detail-header");
   hdr.appendChild(el("span", "detail-class", obj.class_name || "obj"));
   hdr.appendChild(el("span", "mono-addr", obj.addr));
-  _detailPanel.appendChild(hdr);
+  DashState.detail.panel.appendChild(hdr);
 
   /* Coordinates */
   const c = obj.coords || {};
@@ -231,7 +250,7 @@ function renderObjDetail(addr) {
   coordGrid.appendChild(el("span", "detail-coord-label", "h"));
   coordGrid.appendChild(el("span", "detail-coord-val", String(h)));
   coordSec.appendChild(coordGrid);
-  _detailPanel.appendChild(coordSec);
+  DashState.detail.panel.appendChild(coordSec);
 
   /* References */
   const refSec = el("div", "detail-section");
@@ -250,7 +269,7 @@ function renderObjDetail(addr) {
   }
   refSec.appendChild(kvPair("children", String(obj.child_count || 0)));
   refSec.appendChild(kvPair("styles", String(obj.style_count || 0)));
-  _detailPanel.appendChild(refSec);
+  DashState.detail.panel.appendChild(refSec);
 
   /* Styles */
   if (obj.styles && obj.styles.length > 0) {
@@ -277,7 +296,7 @@ function renderObjDetail(addr) {
       }
       styleSec.appendChild(card);
     });
-    _detailPanel.appendChild(styleSec);
+    DashState.detail.panel.appendChild(styleSec);
   }
 }
 
@@ -362,8 +381,8 @@ function buildDisplayAndTrees(data) {
     tabBtns.forEach((b, j) => b.classList.toggle("active", j === idx));
     /* Rebuild content for selected display */
     contentArea.innerHTML = "";
-    _objDataMap = {};
-    _detailPanel = null;
+    DashState.detail.objDataMap = {};
+    DashState.detail.panel = null;
 
     const entry = dispEntries[idx];
     const d = entry.disp;
@@ -397,7 +416,7 @@ function buildDisplayAndTrees(data) {
 
     const detailView = el("div", "obj-detail-view");
     detailView.appendChild(el("p", "empty", "Select an object to inspect."));
-    _detailPanel = detailView;
+    DashState.detail.panel = detailView;
     split.appendChild(detailView);
 
     contentArea.appendChild(split);
@@ -430,9 +449,14 @@ function buildDisplayAndTrees(data) {
   return panel;
 }
 
-/* --- 3D Exploded Object Tree View --- */
-function build3DScene(container, trees, displays, dispObjs) {
-  /* Flatten all objects with global depth across screens */
+/* --- 3D scene sub-functions --- */
+
+/**
+ * Flatten object trees into a layer array with global depth tracking.
+ * @param {Array} trees - object_trees array (each with .screens)
+ * @returns {{ layers: Array, screenNames: string[], screenMaxLocal: Object }}
+ */
+function flattenObjectLayers(trees) {
   const layers = [];
   const screenNames = [];
   let globalDepthOffset = 0;
@@ -459,7 +483,7 @@ function build3DScene(container, trees, displays, dispObjs) {
     let maxLocal = 0;
     function findMax(obj, d) { maxLocal = Math.max(maxLocal, d); if (obj.children) obj.children.forEach(ch => findMax(ch, d + 1)); }
     findMax(s, 0);
-    globalDepthOffset += maxLocal + 2; /* +2 gap between screens */
+    globalDepthOffset += maxLocal + CONSTANTS.SCREEN_GAP;
   }));
 
   /* Compute max local depth per screen for relayout */
@@ -470,30 +494,16 @@ function build3DScene(container, trees, displays, dispObjs) {
     }
   });
 
-  if (layers.length === 0) { container.appendChild(emptyMsg()); return; }
+  return { layers, screenNames, screenMaxLocal };
+}
 
-  /* Scene bounds fixed to display resolution (objects may extend beyond) */
-  let minX = 0, minY = 0, maxX = 0, maxY = 0, maxDepth = 0;
-  (displays || []).forEach(d => {
-    maxX = Math.max(maxX, d.hor_res || 0);
-    maxY = Math.max(maxY, d.ver_res || 0);
-  });
-  layers.forEach(l => { maxDepth = Math.max(maxDepth, l.depth); });
-  const sceneW = maxX - minX || 1;
-  const sceneH = maxY - minY || 1;
-
-  /* Find first display buffer image */
-  let bufBase64 = null;
-  (displays || []).forEach(d => {
-    if (bufBase64) return;
-    ["buf_1", "buf_2"].forEach(bk => {
-      if (bufBase64) return;
-      const b = d[bk];
-      if (b && b.image_base64) bufBase64 = b.image_base64;
-    });
-  });
-
-  /* Controls bar */
+/**
+ * Build the scene control bar (toggle buttons, spread slider, reset button).
+ * @param {Object} options - { maxDepth, defaultSpread (optional), bufBase64 }
+ * @returns {{ controls: HTMLElement, toggle3d, toggleBorders, toggleBuf, toggleOrtho, spreadSlider, resetBtn, defaultSpread: number }}
+ */
+function buildSceneControls(options) {
+  const { maxDepth, bufBase64 } = options;
   const controls = el("div", "scene-controls");
 
   const make3dToggle = (label, defaultOn) => {
@@ -529,7 +539,172 @@ function build3DScene(container, trees, displays, dispObjs) {
   controls.appendChild(spreadSlider);
   const resetBtn = el("button", "scene-reset-btn", "Reset");
   controls.appendChild(resetBtn);
-  container.appendChild(controls);
+
+  return { controls, toggle3d, toggleBorders, toggleBuf, toggleOrtho, spreadSlider, resetBtn, defaultSpread };
+}
+
+/**
+ * Build the buffer image layer with highlight overlay canvas.
+ * @param {Array} displays - display data array
+ * @param {number} scale - scene scale factor
+ * @param {number} sceneW - unscaled scene width
+ * @param {number} sceneH - unscaled scene height
+ * @param {Object} dispObjs - per-display object coordinate maps
+ * @returns {{ bufLayer: HTMLElement, bufCanvas: HTMLCanvasElement } | null}
+ */
+function buildBufferLayer(displays, scale, sceneW, sceneH, dispObjs) {
+  /* Find first display buffer image */
+  let bufBase64 = null;
+  (displays || []).forEach(d => {
+    if (bufBase64) return;
+    ["buf_1", "buf_2"].forEach(bk => {
+      if (bufBase64) return;
+      const b = d[bk];
+      if (b && b.image_base64) bufBase64 = b.image_base64;
+    });
+  });
+  if (!bufBase64) return null;
+
+  const sceneScaledW = sceneW * scale;
+  const sceneScaledH = sceneH * scale;
+
+  const bufLayer = el("div", "scene-buf-layer");
+  bufLayer.style.width = sceneScaledW + "px";
+  bufLayer.style.height = sceneScaledH + "px";
+  bufLayer.style.left = "0px";
+  bufLayer.style.top = "0px";
+  const img = document.createElement("img");
+  img.src = "data:image/png;base64," + bufBase64;
+  img.style.width = "100%"; img.style.height = "100%";
+  img.style.objectFit = "fill";
+  img.draggable = false;
+  bufLayer.appendChild(img);
+
+  /* Overlay canvas for highlight rectangles on buffer */
+  const bufCanvas = document.createElement("canvas");
+  bufCanvas.className = "scene-buf-overlay";
+  bufCanvas.width = sceneScaledW; bufCanvas.height = sceneScaledH;
+  bufLayer.appendChild(bufCanvas);
+
+  /* Register overlay for linked highlight system */
+  if (dispObjs) {
+    Object.keys(dispObjs).forEach(dAddr => {
+      DashState.hl.overlays[dAddr + "-3d"] = {
+        canvas: bufCanvas, w: sceneW / scale * scale, h: sceneH / scale * scale,
+        objs: dispObjs[dAddr],
+      };
+    });
+    /* Normalize: overlay uses scene pixel coords */
+    Object.keys(dispObjs).forEach(dAddr => {
+      const disp = (displays || []).find(dd => dd.addr === dAddr);
+      if (disp) {
+        DashState.hl.overlays[dAddr + "-3d"] = {
+          canvas: bufCanvas,
+          w: disp.hor_res, h: disp.ver_res,
+          objs: dispObjs[dAddr],
+        };
+        /* Scale canvas to match scene viewport */
+        bufCanvas.width = sceneScaledW;
+        bufCanvas.height = sceneScaledH;
+      }
+    });
+  }
+
+  return { bufLayer, bufCanvas, bufBase64 };
+}
+
+/**
+ * Register mouse/wheel event handlers for 3D scene interaction.
+ * @param {HTMLElement} viewport - the scene viewport element
+ * @param {HTMLElement} scene - the inner scene element
+ * @param {Object} callbacks - { getState, applyRotation }
+ */
+function setupSceneInteraction(viewport, scene, callbacks) {
+  const { getState, applyRotation } = callbacks;
+
+  viewport.addEventListener("mousedown", e => {
+    const st = getState();
+    if (e.button === 1 || (e.button === 0 && e.shiftKey)) {
+      /* Middle-click or shift+left-click: pan */
+      e.preventDefault();
+      st.dragging = "pan"; st.lastX = e.clientX; st.lastY = e.clientY;
+      viewport.style.cursor = "move";
+    } else if (e.button === 0 && st.is3d) {
+      /* Left-click: rotate (3D only) */
+      st.dragging = "rotate"; st.lastX = e.clientX; st.lastY = e.clientY;
+      viewport.style.cursor = "grabbing";
+    }
+  });
+
+  window.addEventListener("mousemove", e => {
+    const st = getState();
+    if (!st.dragging) return;
+    const dx = e.clientX - st.lastX, dy = e.clientY - st.lastY;
+    st.lastX = e.clientX; st.lastY = e.clientY;
+    if (st.dragging === "rotate") {
+      st.rotY += dx * CONSTANTS.ROTATION_SENSITIVITY;
+      st.rotX -= dy * CONSTANTS.ROTATION_SENSITIVITY;
+      st.rotX = Math.max(-90, Math.min(90, st.rotX));
+    } else if (st.dragging === "pan") {
+      st.panX += dx / st.zoom;
+      st.panY += dy / st.zoom;
+    }
+    applyRotation();
+  });
+
+  window.addEventListener("mouseup", () => {
+    const st = getState();
+    st.dragging = false; viewport.style.cursor = "grab";
+  });
+
+  /* Wheel: pinch-to-zoom (ctrl+wheel / trackpad pinch) and pan (two-finger scroll) */
+  viewport.addEventListener("wheel", e => {
+    e.preventDefault();
+    const st = getState();
+    if (e.ctrlKey) {
+      /* Pinch zoom (trackpad) or ctrl+scroll (mouse) */
+      const factor = 1 - e.deltaY * CONSTANTS.ZOOM_SENSITIVITY;
+      st.zoom = Math.max(CONSTANTS.MIN_ZOOM, Math.min(CONSTANTS.MAX_ZOOM, st.zoom * factor));
+    } else {
+      /* Two-finger pan (trackpad) or scroll wheel pan */
+      st.panX -= e.deltaX / st.zoom;
+      st.panY -= e.deltaY / st.zoom;
+    }
+    applyRotation();
+  }, { passive: false });
+}
+
+/* --- 3D Exploded Object Tree View (coordinator) --- */
+function build3DScene(container, trees, displays, dispObjs) {
+  /* 1. Flatten object trees into layers */
+  const { layers, screenNames, screenMaxLocal } = flattenObjectLayers(trees);
+
+  if (layers.length === 0) { container.appendChild(emptyMsg()); return; }
+
+  /* Scene bounds fixed to display resolution */
+  let minX = 0, minY = 0, maxX = 0, maxY = 0, maxDepth = 0;
+  (displays || []).forEach(d => {
+    maxX = Math.max(maxX, d.hor_res || 0);
+    maxY = Math.max(maxY, d.ver_res || 0);
+  });
+  layers.forEach(l => { maxDepth = Math.max(maxDepth, l.depth); });
+  const sceneW = maxX - minX || 1;
+  const sceneH = maxY - minY || 1;
+
+  /* Scale factor: fit scene into viewport */
+  const scale = CONSTANTS.VIEWPORT_SIZE / Math.max(sceneW, sceneH);
+  const sceneScaledW = sceneW * scale;
+  const sceneScaledH = sceneH * scale;
+
+  /* 2. Build buffer layer */
+  const bufResult = buildBufferLayer(displays, scale, sceneW, sceneH, dispObjs);
+  const bufBase64 = bufResult ? bufResult.bufBase64 : null;
+  const bufLayer = bufResult ? bufResult.bufLayer : null;
+
+  /* 3. Build controls */
+  const ctrl = buildSceneControls({ maxDepth, bufBase64 });
+  container.appendChild(ctrl.controls);
+  const { toggle3d, toggleBorders, toggleBuf, toggleOrtho, spreadSlider, resetBtn, defaultSpread } = ctrl;
 
   /* Layer filter controls */
   const layerBar = el("div", "scene-layer-bar");
@@ -574,64 +749,17 @@ function build3DScene(container, trees, displays, dispObjs) {
   const tooltip = el("div", "scene-tooltip");
   container.appendChild(tooltip);
 
-  /* Viewport */
+  /* Viewport and scene */
   const viewport = el("div", "scene-viewport");
   const scene = el("div", "scene-3d");
   viewport.appendChild(scene);
   container.appendChild(viewport);
 
-  /* Scale factor: fit scene into viewport */
-  const VIEWPORT_SIZE = 520;
-  const scale = VIEWPORT_SIZE / Math.max(sceneW, sceneH);
-  const sceneScaledW = sceneW * scale;
-  const sceneScaledH = sceneH * scale;
   scene.style.width = sceneScaledW + "px";
   scene.style.height = sceneScaledH + "px";
 
-  /* Buffer image as bottom layer (depth 0, behind all borders) */
-  let bufLayer = null;
-  if (bufBase64) {
-    bufLayer = el("div", "scene-buf-layer");
-    bufLayer.style.width = sceneScaledW + "px";
-    bufLayer.style.height = sceneScaledH + "px";
-    bufLayer.style.left = "0px";
-    bufLayer.style.top = "0px";
-    const img = document.createElement("img");
-    img.src = "data:image/png;base64," + bufBase64;
-    img.style.width = "100%"; img.style.height = "100%";
-    img.style.objectFit = "fill";
-    img.draggable = false;
-    bufLayer.appendChild(img);
-    /* Overlay canvas for highlight rectangles on buffer */
-    const bufCanvas = document.createElement("canvas");
-    bufCanvas.className = "scene-buf-overlay";
-    bufCanvas.width = sceneScaledW; bufCanvas.height = sceneScaledH;
-    bufLayer.appendChild(bufCanvas);
-    scene.appendChild(bufLayer);
-    /* Register overlay for linked highlight system */
-    if (dispObjs) {
-      Object.keys(dispObjs).forEach(dAddr => {
-        _hlOverlays[dAddr + "-3d"] = {
-          canvas: bufCanvas, w: sceneW / scale * scale, h: sceneH / scale * scale,
-          objs: dispObjs[dAddr],
-        };
-      });
-      /* Normalize: overlay uses scene pixel coords */
-      Object.keys(dispObjs).forEach(dAddr => {
-        const disp = (displays || []).find(dd => dd.addr === dAddr);
-        if (disp) {
-          _hlOverlays[dAddr + "-3d"] = {
-            canvas: bufCanvas,
-            w: disp.hor_res, h: disp.ver_res,
-            objs: dispObjs[dAddr],
-          };
-          /* Scale canvas to match scene viewport */
-          bufCanvas.width = sceneScaledW;
-          bufCanvas.height = sceneScaledH;
-        }
-      });
-    }
-  }
+  /* Append buffer layer to scene */
+  if (bufLayer) scene.appendChild(bufLayer);
 
   /* Build border layer divs */
   const layerEls = [];
@@ -657,6 +785,13 @@ function build3DScene(container, trees, displays, dispObjs) {
     scene.appendChild(div);
   });
 
+  /* Interaction state */
+  const interactionState = {
+    rotX: CONSTANTS.DEFAULT_ROT_X, rotY: CONSTANTS.DEFAULT_ROT_Y,
+    dragging: false, lastX: 0, lastY: 0,
+    is3d: true, zoom: 1, panX: 0, panY: 0,
+  };
+
   /* Apply layer visibility filter and recompute Z positions */
   function applyLayerVisibility() {
     const bordersOn = toggleBorders.dataset.on === "1";
@@ -670,10 +805,10 @@ function build3DScene(container, trees, displays, dispObjs) {
     let offset = 0;
     visibleScreens.forEach(idx => {
       screenOffset[idx] = offset;
-      offset += (screenMaxLocal[idx] || 0) + 2;
+      offset += (screenMaxLocal[idx] || 0) + CONSTANTS.SCREEN_GAP;
     });
 
-    const spread = is3d ? Number(spreadSlider.value) : 0;
+    const spread = interactionState.is3d ? Number(spreadSlider.value) : 0;
     layerEls.forEach(le => {
       if (!bordersOn || !layerVisible[le.screenIdx]) {
         le.el.style.display = "none";
@@ -686,43 +821,32 @@ function build3DScene(container, trees, displays, dispObjs) {
     if (bufLayer) bufLayer.style.transform = "translateZ(" + (-spread * 1.5) + "px)";
   }
 
-  /* Interaction state: rotation, zoom, pan */
-  let rotX = -30, rotY = 30, dragging = false, lastX = 0, lastY = 0;
-  let is3d = true;
-  let zoom = 1, panX = 0, panY = 0;
-
-  /* Convenience wrapper */
-  function applySpread() {
-    applyLayerVisibility();
-  }
-  applyLayerVisibility();
-
-  spreadSlider.addEventListener("input", () => {
-    applySpread();
-  });
-
-  /* Pan is always allowed (no clamping) */
-  function clampPan() {}
-
   function applyRotation() {
-    clampPan();
     /* Toggle perspective vs orthographic projection */
     const ortho = toggleOrtho.dataset.on === "1";
-    viewport.style.perspective = ortho ? "none" : "1200px";
+    viewport.style.perspective = ortho ? "none" : CONSTANTS.PERSPECTIVE_DISTANCE + "px";
     /* Zoom and pan applied on scene so viewport clips overflow */
-    const base = "translate(-50%, -50%) scale(" + zoom + ") translate(" + (panX / zoom) + "px," + (panY / zoom) + "px)";
-    if (is3d) {
-      scene.style.transform = base + " rotateX(" + rotX + "deg) rotateY(" + rotY + "deg)";
+    const st = interactionState;
+    const base = "translate(-50%, -50%) scale(" + st.zoom + ") translate(" + (st.panX / st.zoom) + "px," + (st.panY / st.zoom) + "px)";
+    if (st.is3d) {
+      scene.style.transform = base + " rotateX(" + st.rotX + "deg) rotateY(" + st.rotY + "deg)";
     } else {
       scene.style.transform = base;
     }
   }
+
+  function applySpread() {
+    applyLayerVisibility();
+  }
+  applyLayerVisibility();
   applyRotation();
+
+  spreadSlider.addEventListener("input", () => { applySpread(); });
 
   /* Toggle handlers */
   toggle3d.addEventListener("click", () => {
-    is3d = toggle3d.dataset.on === "1";
-    spreadSlider.disabled = !is3d;
+    interactionState.is3d = toggle3d.dataset.on === "1";
+    spreadSlider.disabled = !interactionState.is3d;
     applyLayerVisibility();
     applyRotation();
   });
@@ -738,50 +862,11 @@ function build3DScene(container, trees, displays, dispObjs) {
     });
   }
 
-  viewport.addEventListener("mousedown", e => {
-    if (e.button === 1 || (e.button === 0 && e.shiftKey)) {
-      /* Middle-click or shift+left-click: pan */
-      e.preventDefault();
-      dragging = "pan"; lastX = e.clientX; lastY = e.clientY;
-      viewport.style.cursor = "move";
-    } else if (e.button === 0 && is3d) {
-      /* Left-click: rotate (3D only) */
-      dragging = "rotate"; lastX = e.clientX; lastY = e.clientY;
-      viewport.style.cursor = "grabbing";
-    }
+  /* 4. Setup mouse/wheel interaction */
+  setupSceneInteraction(viewport, scene, {
+    getState: () => interactionState,
+    applyRotation,
   });
-  window.addEventListener("mousemove", e => {
-    if (!dragging) return;
-    const dx = e.clientX - lastX, dy = e.clientY - lastY;
-    lastX = e.clientX; lastY = e.clientY;
-    if (dragging === "rotate") {
-      rotY += dx * 0.4;
-      rotX -= dy * 0.4;
-      rotX = Math.max(-90, Math.min(90, rotX));
-    } else if (dragging === "pan") {
-      panX += dx / zoom;
-      panY += dy / zoom;
-    }
-    applyRotation();
-  });
-  window.addEventListener("mouseup", () => {
-    dragging = false; viewport.style.cursor = "grab";
-  });
-
-  /* Wheel: pinch-to-zoom (ctrl+wheel / trackpad pinch) and pan (two-finger scroll) */
-  viewport.addEventListener("wheel", e => {
-    e.preventDefault();
-    if (e.ctrlKey) {
-      /* Pinch zoom (trackpad) or ctrl+scroll (mouse) */
-      const factor = 1 - e.deltaY * 0.01;
-      zoom = Math.max(0.2, Math.min(10, zoom * factor));
-    } else {
-      /* Two-finger pan (trackpad) or scroll wheel pan */
-      panX -= e.deltaX / zoom;
-      panY -= e.deltaY / zoom;
-    }
-    applyRotation();
-  }, { passive: false });
 
   /* Hover: linked highlight + tooltip */
   scene.addEventListener("mouseover", e => {
@@ -827,11 +912,12 @@ function build3DScene(container, trees, displays, dispObjs) {
 
   /* Reset button */
   resetBtn.addEventListener("click", () => {
-    rotX = -30; rotY = 30;
-    zoom = 1; panX = 0; panY = 0;
+    interactionState.rotX = CONSTANTS.DEFAULT_ROT_X;
+    interactionState.rotY = CONSTANTS.DEFAULT_ROT_Y;
+    interactionState.zoom = 1; interactionState.panX = 0; interactionState.panY = 0;
+    interactionState.is3d = true;
     spreadSlider.value = String(defaultSpread);
     spreadSlider.disabled = false;
-    is3d = true;
     toggle3d.dataset.on = "1"; toggle3d.classList.add("active");
     toggleBorders.dataset.on = "1"; toggleBorders.classList.add("active");
     if (toggleBuf) { toggleBuf.dataset.on = bufBase64 ? "1" : "0"; toggleBuf.classList.toggle("active", !!bufBase64); }
@@ -877,39 +963,53 @@ function progressBar(ratio, color) {
   return wrap;
 }
 
+/* --- Generic card builder --- */
+function buildCard(item, config) {
+  const card = el("div", config.cardClass);
+  if (config.anchorPrefix && item.addr)
+    card.id = config.anchorPrefix + "-" + item.addr;
+
+  const hdr = el("div", config.cardClass.replace("-card", "-header"));
+  hdr.appendChild(el("span", "mono-addr", item.addr));
+  (config.badges || []).forEach(b => hdr.appendChild(badge(b.text, b.color)));
+  card.appendChild(hdr);
+
+  const info = el("div", config.cardClass.replace("-card", "-info"));
+  if (config.content) config.content(info, item);
+  card.appendChild(info);
+  return card;
+}
+
 /* --- Animations: card-based with progress bar --- */
 function buildAnimations(data) {
   const items = data.animations || [];
   const { panel, body } = makePanel("panel-animations", "🎬", "Animations", items.length);
   if (items.length === 0) { body.appendChild(emptyMsg()); return panel; }
   items.forEach(a => {
-    const card = el("div", "anim-card");
-    if (a.addr) card.id = "anim-" + a.addr;
-    const hdr = el("div", "anim-header");
-    hdr.appendChild(el("span", "mono-addr", a.addr));
     const statusColor = a.status === "paused" ? "yellow" : a.status === "reverse" ? "mauve" : "green";
-    hdr.appendChild(badge(a.status || "running", statusColor));
-    card.appendChild(hdr);
+    body.appendChild(buildCard(a, {
+      cardClass: "anim-card",
+      anchorPrefix: "anim",
+      badges: [{ text: a.status || "running", color: statusColor }],
+      content: (info, a) => {
+        info.appendChild(kvPair("callback", a.exec_cb || "-"));
+        info.appendChild(kvPair("duration", a.duration + "ms"));
 
-    const info = el("div", "anim-info");
-    info.appendChild(kvPair("callback", a.exec_cb || "-"));
-    info.appendChild(kvPair("duration", a.duration + "ms"));
+        const range = a.end_value - a.start_value;
+        const ratio = range !== 0 ? (a.current_value - a.start_value) / range : 0;
+        const valRow = el("div", "anim-value-row");
+        valRow.appendChild(el("span", "anim-val-label", String(a.start_value)));
+        valRow.appendChild(progressBar(ratio, "blue"));
+        valRow.appendChild(el("span", "anim-val-label", String(a.end_value)));
+        info.appendChild(valRow);
+        info.appendChild(el("div", "anim-cur-val", "current: " + a.current_value +
+          "  (" + Math.round(ratio * 100) + "%)"));
 
-    const range = a.end_value - a.start_value;
-    const ratio = range !== 0 ? (a.current_value - a.start_value) / range : 0;
-    const valRow = el("div", "anim-value-row");
-    valRow.appendChild(el("span", "anim-val-label", String(a.start_value)));
-    valRow.appendChild(progressBar(ratio, "blue"));
-    valRow.appendChild(el("span", "anim-val-label", String(a.end_value)));
-    info.appendChild(valRow);
-    info.appendChild(el("div", "anim-cur-val", "current: " + a.current_value +
-      "  (" + Math.round(ratio * 100) + "%)"));
-
-    const repeat = a.repeat_cnt === 0xFFFFFFFF ? "∞" : String(a.repeat_cnt);
-    info.appendChild(kvPair("repeat", repeat));
-    info.appendChild(kvPair("act_time", a.act_time + "ms"));
-    card.appendChild(info);
-    body.appendChild(card);
+        const repeat = a.repeat_cnt === CONSTANTS.INFINITE_REPEAT ? "∞" : String(a.repeat_cnt);
+        info.appendChild(kvPair("repeat", repeat));
+        info.appendChild(kvPair("act_time", a.act_time + "ms"));
+      }
+    }));
   });
   return panel;
 }
@@ -920,21 +1020,20 @@ function buildTimers(data) {
   const { panel, body } = makePanel("panel-timers", "⏱", "Timers", items.length);
   if (items.length === 0) { body.appendChild(emptyMsg()); return panel; }
   items.forEach(t => {
-    const card = el("div", "timer-card");
-    if (t.addr) card.id = "timer-" + t.addr;
-    const hdr = el("div", "timer-header");
-    hdr.appendChild(el("span", "mono-addr", t.addr));
-    hdr.appendChild(badge(t.paused ? "paused" : "active", t.paused ? "yellow" : "green"));
-    card.appendChild(hdr);
-    const info = el("div", "timer-info timer-info-row");
-    info.appendChild(kvPair("callback", t.timer_cb || "-"));
-    info.appendChild(kvPair("period", t.period + "ms"));
-    info.appendChild(kvPair("frequency", t.frequency || "-"));
-    const repeat = t.repeat_count === -1 ? "∞" : String(t.repeat_count);
-    info.appendChild(kvPair("repeat", repeat));
-    info.appendChild(kvPair("last_run", String(t.last_run)));
-    card.appendChild(info);
-    body.appendChild(card);
+    body.appendChild(buildCard(t, {
+      cardClass: "timer-card",
+      anchorPrefix: "timer",
+      badges: [{ text: t.paused ? "paused" : "active", color: t.paused ? "yellow" : "green" }],
+      content: (info, t) => {
+        info.classList.add("timer-info-row");
+        info.appendChild(kvPair("callback", t.timer_cb || "-"));
+        info.appendChild(kvPair("period", t.period + "ms"));
+        info.appendChild(kvPair("frequency", t.frequency || "-"));
+        const repeat = t.repeat_count === -1 ? "∞" : String(t.repeat_count);
+        info.appendChild(kvPair("repeat", repeat));
+        info.appendChild(kvPair("last_run", String(t.last_run)));
+      }
+    }));
   });
   return panel;
 }
@@ -948,31 +1047,34 @@ function buildIndevs(data) {
     pointer: "👆", keypad: "⌨️", button: "🔘", encoder: "🎛️", none: "❓"
   };
   items.forEach(d => {
-    const card = el("div", "indev-card");
-    if (d.addr) card.id = "indev-" + d.addr;
-    const hdr = el("div", "indev-header");
     const typeIcon = INDEV_ICONS[d.type_name] || "🕹";
-    hdr.appendChild(el("span", "indev-type-icon", typeIcon));
-    hdr.appendChild(el("span", "indev-type-name", d.type_name || "unknown"));
-    hdr.appendChild(badge(d.enabled ? "enabled" : "disabled", d.enabled ? "green" : "red"));
-    card.appendChild(hdr);
-    const info = el("div", "indev-info");
-    info.appendChild(kvPair("read_cb", d.read_cb || "-"));
-    info.appendChild(kvPair("long_press", d.long_press_time + "ms"));
-    info.appendChild(kvPair("scroll_limit", String(d.scroll_limit)));
-    if (d.display_addr) {
-      const row = el("div", "kv-row");
-      row.appendChild(el("span", "kv-label", "display"));
-      row.appendChild(xref(d.display_addr, "disp"));
-      info.appendChild(row);
-    }
-    if (d.group_addr) {
-      const row = el("div", "kv-row");
-      row.appendChild(el("span", "kv-label", "group"));
-      row.appendChild(xref(d.group_addr, "group"));
-      info.appendChild(row);
-    }
-    card.appendChild(info);
+    const card = buildCard(d, {
+      cardClass: "indev-card",
+      anchorPrefix: "indev",
+      badges: [{ text: d.enabled ? "enabled" : "disabled", color: d.enabled ? "green" : "red" }],
+      content: (info, d) => {
+        info.appendChild(kvPair("read_cb", d.read_cb || "-"));
+        info.appendChild(kvPair("long_press", d.long_press_time + "ms"));
+        info.appendChild(kvPair("scroll_limit", String(d.scroll_limit)));
+        if (d.display_addr) {
+          const row = el("div", "kv-row");
+          row.appendChild(el("span", "kv-label", "display"));
+          row.appendChild(xref(d.display_addr, "disp"));
+          info.appendChild(row);
+        }
+        if (d.group_addr) {
+          const row = el("div", "kv-row");
+          row.appendChild(el("span", "kv-label", "group"));
+          row.appendChild(xref(d.group_addr, "group"));
+          info.appendChild(row);
+        }
+      }
+    });
+    /* Prepend type icon and name before mono-addr in header */
+    const hdr = card.querySelector(".indev-header");
+    const addrSpan = hdr.firstChild;
+    hdr.insertBefore(el("span", "indev-type-name", d.type_name || "unknown"), addrSpan);
+    hdr.insertBefore(el("span", "indev-type-icon", typeIcon), hdr.firstChild);
     body.appendChild(card);
   });
   return panel;
@@ -1049,34 +1151,33 @@ function buildGroups(data) {
   const { panel, body } = makePanel("panel-groups", "👥", "Groups", items.length);
   if (items.length === 0) { body.appendChild(emptyMsg()); return panel; }
   items.forEach(g => {
-    const card = el("div", "group-card");
-    if (g.addr) card.id = "group-" + g.addr;
-    const hdr = el("div", "group-header");
-    hdr.appendChild(el("span", "mono-addr", g.addr));
-    hdr.appendChild(badge(g.obj_count + " objects", "blue"));
-    if (g.frozen) hdr.appendChild(badge("frozen", "yellow"));
-    if (g.editing) hdr.appendChild(badge("editing", "peach"));
-    card.appendChild(hdr);
-    const info = el("div", "group-info");
-    info.appendChild(kvPair("wrap", String(g.wrap)));
-    if (g.focused_addr) {
-      const row = el("div", "kv-row");
-      row.appendChild(el("span", "kv-label", "focused"));
-      row.appendChild(xref(g.focused_addr, "obj"));
-      info.appendChild(row);
-    }
-    if (g.member_addrs && g.member_addrs.length > 0) {
-      const mRow = el("div", "group-members");
-      mRow.appendChild(el("span", "kv-label", "members"));
-      const mList = el("div", "member-list");
-      g.member_addrs.forEach(a => {
-        mList.appendChild(xref(a, "obj"));
-      });
-      mRow.appendChild(mList);
-      info.appendChild(mRow);
-    }
-    card.appendChild(info);
-    body.appendChild(card);
+    const badges = [{ text: g.obj_count + " objects", color: "blue" }];
+    if (g.frozen) badges.push({ text: "frozen", color: "yellow" });
+    if (g.editing) badges.push({ text: "editing", color: "peach" });
+    body.appendChild(buildCard(g, {
+      cardClass: "group-card",
+      anchorPrefix: "group",
+      badges: badges,
+      content: (info, g) => {
+        info.appendChild(kvPair("wrap", String(g.wrap)));
+        if (g.focused_addr) {
+          const row = el("div", "kv-row");
+          row.appendChild(el("span", "kv-label", "focused"));
+          row.appendChild(xref(g.focused_addr, "obj"));
+          info.appendChild(row);
+        }
+        if (g.member_addrs && g.member_addrs.length > 0) {
+          const mRow = el("div", "group-members");
+          mRow.appendChild(el("span", "kv-label", "members"));
+          const mList = el("div", "member-list");
+          g.member_addrs.forEach(a => {
+            mList.appendChild(xref(a, "obj"));
+          });
+          mRow.appendChild(mList);
+          info.appendChild(mRow);
+        }
+      }
+    }));
   });
   return panel;
 }
@@ -1087,27 +1188,27 @@ function buildDrawTasks(data) {
   const { panel, body } = makePanel("panel-draw-tasks", "📝", "Draw Tasks", items.length);
   if (items.length === 0) { body.appendChild(emptyMsg()); return panel; }
   items.forEach(t => {
-    const card = el("div", "dtask-card");
-    if (t.addr) card.id = "drawtask-" + t.addr;
-    const hdr = el("div", "dtask-header");
-    hdr.appendChild(el("span", "mono-addr", t.addr));
-    hdr.appendChild(badge(t.type_name || "?", "blue"));
     const stateColor = t.state_name === "ready" ? "green" : t.state_name === "queued" ? "yellow" : "mauve";
-    hdr.appendChild(badge(t.state_name || "?", stateColor));
-    card.appendChild(hdr);
-    const info = el("div", "dtask-info");
-    if (t.area) {
-      const a = t.area;
-      const w = a.x2 - a.x1; const h = a.y2 - a.y1;
-      info.appendChild(kvPair("area", "(" + a.x1 + "," + a.y1 + ") → (" + a.x2 + "," + a.y2 + ")"));
-      info.appendChild(kvPair("size", w + " × " + h));
-    }
-    info.appendChild(kvPair("opacity", t.opa));
-    if (t.preferred_draw_unit_id !== undefined) {
-      info.appendChild(kvPair("unit_id", t.preferred_draw_unit_id));
-    }
-    card.appendChild(info);
-    body.appendChild(card);
+    body.appendChild(buildCard(t, {
+      cardClass: "dtask-card",
+      anchorPrefix: "drawtask",
+      badges: [
+        { text: t.type_name || "?", color: "blue" },
+        { text: t.state_name || "?", color: stateColor },
+      ],
+      content: (info, t) => {
+        if (t.area) {
+          const a = t.area;
+          const w = a.x2 - a.x1; const h = a.y2 - a.y1;
+          info.appendChild(kvPair("area", "(" + a.x1 + "," + a.y1 + ") → (" + a.x2 + "," + a.y2 + ")"));
+          info.appendChild(kvPair("size", w + " × " + h));
+        }
+        info.appendChild(kvPair("opacity", t.opa));
+        if (t.preferred_draw_unit_id !== undefined) {
+          info.appendChild(kvPair("unit_id", t.preferred_draw_unit_id));
+        }
+      }
+    }));
   });
   return panel;
 }
