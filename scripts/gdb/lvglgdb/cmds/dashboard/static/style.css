@@ -635,9 +635,9 @@ a.xref:hover { color: var(--blue); border-bottom-color: var(--blue); }
 .panel-stat        { grid-column: span 2; }
 .panel-disp-trees  { grid-column: span 12; }
 .panel-disp-trees > .panel-body { overflow: auto; }
-.panel-img-cache   { grid-column: span 12; }
+.panel-img-cache   { grid-column: span 4; }
 .panel-img-cache > .panel-body { max-height: 400px; overflow-y: auto; }
-.panel-hdr-cache   { grid-column: span 8; }
+.panel-hdr-cache   { grid-column: span 4; }
 .panel-hdr-cache > .panel-body { max-height: 400px; overflow-y: auto; }
 .panel-hdr-cache .table-wrap { overflow-x: auto; }
 .panel-hdr-cache table { font-size: 11px; }
