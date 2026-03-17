@@ -396,7 +396,17 @@ function buildDisplayAndTrees(data) {
 
   dispEntries.forEach((entry, i) => {
     const d = entry.disp;
-    const btn = el("button", "disp-tab-btn", d.hor_res + "×" + d.ver_res + " " + (d.addr || ""));
+    const btn = el("button", "disp-tab-btn");
+    /* Buffer preview thumbnail */
+    const bufData = (d.buf_1 && d.buf_1.image_base64) || (d.buf_2 && d.buf_2.image_base64);
+    if (bufData) {
+      const thumb = document.createElement("img");
+      thumb.className = "disp-tab-thumb";
+      thumb.src = "data:image/png;base64," + bufData;
+      thumb.draggable = false;
+      btn.appendChild(thumb);
+    }
+    btn.appendChild(document.createTextNode(d.hor_res + "×" + d.ver_res));
     btn.addEventListener("click", () => showDisplay(i));
     tabBtns.push(btn);
     tabBar.appendChild(btn);
@@ -491,13 +501,15 @@ function build3DScene(container, trees, displays, dispObjs) {
   const toggle3d = make3dToggle("3D", true);
   const toggleBorders = make3dToggle("Borders", true);
   const toggleBuf = make3dToggle("Buffer", !!bufBase64);
+  const toggleOrtho = make3dToggle("Ortho", false);
   controls.appendChild(toggle3d);
   controls.appendChild(toggleBorders);
   if (bufBase64) controls.appendChild(toggleBuf);
+  controls.appendChild(toggleOrtho);
 
   /* Dynamic spread range based on total depth levels */
   const defaultSpread = maxDepth > 0 ? Math.round(300 / maxDepth) : 30;
-  const maxSpread = defaultSpread * 3;
+  const maxSpread = Math.max(200, defaultSpread * 5);
 
   const spreadLabel = el("label", "scene-label", "Z Spread");
   const spreadSlider = document.createElement("input");
@@ -680,19 +692,14 @@ function build3DScene(container, trees, displays, dispObjs) {
     applySpread();
   });
 
-  /* Clamp pan: allow panning only when zoomed in, limit to visible overflow */
-  function clampPan() {
-    if (zoom <= 1) { panX = 0; panY = 0; return; }
-    const w = viewport.offsetWidth;
-    const h = viewport.offsetHeight;
-    const maxPanX = w * (zoom - 1) / 2;
-    const maxPanY = h * (zoom - 1) / 2;
-    panX = Math.max(-maxPanX, Math.min(maxPanX, panX));
-    panY = Math.max(-maxPanY, Math.min(maxPanY, panY));
-  }
+  /* Pan is always allowed (no clamping) */
+  function clampPan() {}
 
   function applyRotation() {
     clampPan();
+    /* Toggle perspective vs orthographic projection */
+    const ortho = toggleOrtho.dataset.on === "1";
+    viewport.style.perspective = ortho ? "none" : "1200px";
     /* Zoom and pan applied on scene so viewport clips overflow */
     const base = "translate(-50%, -50%) scale(" + zoom + ") translate(" + (panX / zoom) + "px," + (panY / zoom) + "px)";
     if (is3d) {
@@ -710,6 +717,8 @@ function build3DScene(container, trees, displays, dispObjs) {
     applyLayerVisibility();
     applyRotation();
   });
+
+  toggleOrtho.addEventListener("click", () => { applyRotation(); });
 
   toggleBorders.addEventListener("click", () => { applyLayerVisibility(); });
 
@@ -817,6 +826,7 @@ function build3DScene(container, trees, displays, dispObjs) {
     toggle3d.dataset.on = "1"; toggle3d.classList.add("active");
     toggleBorders.dataset.on = "1"; toggleBorders.classList.add("active");
     if (toggleBuf) { toggleBuf.dataset.on = bufBase64 ? "1" : "0"; toggleBuf.classList.toggle("active", !!bufBase64); }
+    toggleOrtho.dataset.on = "0"; toggleOrtho.classList.remove("active");
     layerEls.forEach(le => { le.el.style.display = ""; });
     screenNames.forEach((name, i) => {
       layerVisible[i] = name === "act_scr" || screenNames.length === 1;
