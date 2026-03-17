@@ -47,6 +47,7 @@ const CONSTANTS = {
   ZOOM_SENSITIVITY: 0.01,           /* wheel zoom factor */
   ROTATION_SENSITIVITY: 0.4,        /* mouse drag rotation factor */
   SCREEN_GAP: 2,                    /* gap between screen layers in depth */
+  ANIM_DURATION: 500,               /* 3D toggle transition duration (ms) */
 };
 
 /* Unified dashboard state object */
@@ -792,8 +793,10 @@ function build3DScene(container, trees, displays, dispObjs) {
     is3d: true, zoom: 1, panX: 0, panY: 0,
   };
 
-  /* Apply layer visibility filter and recompute Z positions */
-  function applyLayerVisibility() {
+  /* Apply layer visibility filter and recompute Z positions.
+   * @param {number} [spreadOverride] - if provided, use this spread instead of slider value
+   */
+  function applyLayerVisibility(spreadOverride) {
     const bordersOn = toggleBorders.dataset.on === "1";
 
     /* Recompute global depth offsets for visible screens only */
@@ -808,7 +811,8 @@ function build3DScene(container, trees, displays, dispObjs) {
       offset += (screenMaxLocal[idx] || 0) + CONSTANTS.SCREEN_GAP;
     });
 
-    const spread = interactionState.is3d ? Number(spreadSlider.value) : 0;
+    const spread = spreadOverride !== undefined ? spreadOverride
+      : (interactionState.is3d ? Number(spreadSlider.value) : 0);
     layerEls.forEach(le => {
       if (!bordersOn || !layerVisible[le.screenIdx]) {
         le.el.style.display = "none";
@@ -821,15 +825,21 @@ function build3DScene(container, trees, displays, dispObjs) {
     if (bufLayer) bufLayer.style.transform = "translateZ(" + (-spread * 1.5) + "px)";
   }
 
-  function applyRotation() {
+  /**
+   * Apply scene rotation transform.
+   * @param {Object} [rotOverride] - { rotX, rotY } to override interactionState
+   */
+  function applyRotation(rotOverride) {
     /* Toggle perspective vs orthographic projection */
     const ortho = toggleOrtho.dataset.on === "1";
     viewport.style.perspective = ortho ? "none" : CONSTANTS.PERSPECTIVE_DISTANCE + "px";
     /* Zoom and pan applied on scene so viewport clips overflow */
     const st = interactionState;
+    const rx = rotOverride ? rotOverride.rotX : st.rotX;
+    const ry = rotOverride ? rotOverride.rotY : st.rotY;
     const base = "translate(-50%, -50%) scale(" + st.zoom + ") translate(" + (st.panX / st.zoom) + "px," + (st.panY / st.zoom) + "px)";
-    if (st.is3d) {
-      scene.style.transform = base + " rotateX(" + st.rotX + "deg) rotateY(" + st.rotY + "deg)";
+    if (st.is3d || rotOverride) {
+      scene.style.transform = base + " rotateX(" + rx + "deg) rotateY(" + ry + "deg)";
     } else {
       scene.style.transform = base;
     }
@@ -838,6 +848,53 @@ function build3DScene(container, trees, displays, dispObjs) {
   function applySpread() {
     applyLayerVisibility();
   }
+
+  /* Easing: cubic-bezier(0.4, 0, 0.2, 1) approximation */
+  function easeInOutCubic(t) {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  }
+
+  let animFrameId = null;
+
+  /**
+   * Animate 3D toggle transition: rotation and z-spread.
+   * @param {boolean} entering3d - true = entering 3D, false = leaving 3D
+   */
+  function animateTransition(entering3d) {
+    if (animFrameId) { cancelAnimationFrame(animFrameId); animFrameId = null; }
+    const duration = CONSTANTS.ANIM_DURATION;
+    const targetSpread = Number(spreadSlider.value);
+    const targetRotX = CONSTANTS.DEFAULT_ROT_X;
+    const targetRotY = CONSTANTS.DEFAULT_ROT_Y;
+    const startTime = performance.now();
+
+    function tick(now) {
+      const elapsed = now - startTime;
+      const rawT = Math.min(elapsed / duration, 1);
+      const t = easeInOutCubic(entering3d ? rawT : 1 - rawT);
+
+      applyRotation({ rotX: targetRotX * t, rotY: targetRotY * t });
+      applyLayerVisibility(targetSpread * t);
+
+      if (rawT < 1) {
+        animFrameId = requestAnimationFrame(tick);
+      } else {
+        animFrameId = null;
+        /* Settle final state */
+        if (entering3d) {
+          interactionState.rotX = targetRotX;
+          interactionState.rotY = targetRotY;
+        } else {
+          interactionState.rotX = 0;
+          interactionState.rotY = 0;
+        }
+        applyRotation();
+        applyLayerVisibility();
+      }
+    }
+    animFrameId = requestAnimationFrame(tick);
+  }
+
   applyLayerVisibility();
   applyRotation();
 
@@ -847,8 +904,7 @@ function build3DScene(container, trees, displays, dispObjs) {
   toggle3d.addEventListener("click", () => {
     interactionState.is3d = toggle3d.dataset.on === "1";
     spreadSlider.disabled = !interactionState.is3d;
-    applyLayerVisibility();
-    applyRotation();
+    animateTransition(interactionState.is3d);
   });
 
   toggleOrtho.addEventListener("click", () => { applyRotation(); });
