@@ -856,38 +856,51 @@ function build3DScene(container, trees, displays, dispObjs) {
 
   let animFrameId = null;
 
+  /* Saved rotation for 3D toggle memory */
+  let savedRotX = CONSTANTS.DEFAULT_ROT_X;
+  let savedRotY = CONSTANTS.DEFAULT_ROT_Y;
+
   /**
    * Animate 3D toggle transition: rotation and z-spread.
+   * Entering 3D: animate from (0,0) to saved rotation.
+   * Leaving 3D: save current rotation, animate to (0,0).
    * @param {boolean} entering3d - true = entering 3D, false = leaving 3D
    */
   function animateTransition(entering3d) {
     if (animFrameId) { cancelAnimationFrame(animFrameId); animFrameId = null; }
     const duration = CONSTANTS.ANIM_DURATION;
     const targetSpread = Number(spreadSlider.value);
-    const targetRotX = CONSTANTS.DEFAULT_ROT_X;
-    const targetRotY = CONSTANTS.DEFAULT_ROT_Y;
+
+    if (!entering3d) {
+      /* Save current rotation before leaving 3D */
+      savedRotX = interactionState.rotX;
+      savedRotY = interactionState.rotY;
+    }
+
+    const toRotX = entering3d ? savedRotX : 0;
+    const toRotY = entering3d ? savedRotY : 0;
+    const fromRotX = entering3d ? 0 : savedRotX;
+    const fromRotY = entering3d ? 0 : savedRotY;
     const startTime = performance.now();
 
     function tick(now) {
       const elapsed = now - startTime;
       const rawT = Math.min(elapsed / duration, 1);
-      const t = easeInOutCubic(entering3d ? rawT : 1 - rawT);
+      const t = easeInOutCubic(rawT);
 
-      applyRotation({ rotX: targetRotX * t, rotY: targetRotY * t });
-      applyLayerVisibility(targetSpread * t);
+      const curRotX = fromRotX + (toRotX - fromRotX) * t;
+      const curRotY = fromRotY + (toRotY - fromRotY) * t;
+      const curSpread = entering3d ? targetSpread * t : targetSpread * (1 - t);
+
+      applyRotation({ rotX: curRotX, rotY: curRotY });
+      applyLayerVisibility(curSpread);
 
       if (rawT < 1) {
         animFrameId = requestAnimationFrame(tick);
       } else {
         animFrameId = null;
-        /* Settle final state */
-        if (entering3d) {
-          interactionState.rotX = targetRotX;
-          interactionState.rotY = targetRotY;
-        } else {
-          interactionState.rotX = 0;
-          interactionState.rotY = 0;
-        }
+        interactionState.rotX = toRotX;
+        interactionState.rotY = toRotY;
         applyRotation();
         applyLayerVisibility();
       }
