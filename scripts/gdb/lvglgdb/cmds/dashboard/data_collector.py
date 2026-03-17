@@ -1,6 +1,6 @@
 import base64
 import functools
-from datetime import datetime, timezone
+from datetime import datetime
 
 import gdb
 
@@ -57,7 +57,7 @@ def collect_all() -> dict:
 
     data = {
         "meta": {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now().astimezone().isoformat(),
             "lvgl_version": _get_lvgl_version(),
         },
         # Specialized collectors (complex logic, not registry-driven)
