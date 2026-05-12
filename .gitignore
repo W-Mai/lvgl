@@ -21,3 +21,6 @@ config.h
 defconfig
 env/*
 docs-venv
+
+# Local project config (not upstreamed)
+lv_conf.h

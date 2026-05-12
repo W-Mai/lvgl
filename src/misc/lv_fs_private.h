@@ -29,6 +29,7 @@ struct _lv_fs_file_cache_t {
     uint32_t end;
     uint32_t file_position;
     void * buffer;
+    bool from_buffer; /**< true: entire file in buffer, no real fd */
 };
 
 /**********************
